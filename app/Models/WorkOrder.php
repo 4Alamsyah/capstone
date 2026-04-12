@@ -14,6 +14,7 @@ class WorkOrder extends Model
     protected $fillable = [
         'wo_number',
         'bom_id',
+        'purchase_order_id',
         'quantity',
         'status',
         'scheduled_date',
@@ -31,6 +32,11 @@ class WorkOrder extends Model
     public function bom(): BelongsTo
     {
         return $this->belongsTo(Bom::class);
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function reports(): HasMany

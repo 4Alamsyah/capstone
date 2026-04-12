@@ -53,6 +53,7 @@ type Props = {
     parts: PartOption[];
     defaultCurrency: string;
     currencies: CurrencyOption[];
+    paymentTermsOptions: string[];
 };
 
 const props = defineProps<Props>();
@@ -213,7 +214,14 @@ const submit = () => {
 
                         <div class="grid gap-2 md:col-span-2">
                             <Label for="payment_terms">Payment Terms</Label>
-                            <Input id="payment_terms" v-model="form.payment_terms" placeholder="NET 30" />
+                            <select
+                                id="payment_terms"
+                                v-model="form.payment_terms"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="">- pilih payment terms -</option>
+                                <option v-for="term in props.paymentTermsOptions" :key="term" :value="term">{{ term }}</option>
+                            </select>
                             <InputError :message="form.errors.payment_terms" />
                         </div>
 

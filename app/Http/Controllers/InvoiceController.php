@@ -11,7 +11,9 @@ use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Part;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +55,9 @@ class InvoiceController extends Controller
                 'invoice_date' => $invoice->invoice_date?->format('Y-m-d'),
                 'due_date' => $invoice->due_date?->format('Y-m-d'),
                 'status' => $invoice->status,
+                'payment_approval_status' => $invoice->payment_approval_status,
+                'payment_approval_notes' => $invoice->payment_approval_notes,
+                'paid_at' => $invoice->paid_at?->format('Y-m-d H:i'),
                 'currency_code' => $invoice->currency_code,
                 'subtotal' => (string) $invoice->subtotal,
                 'tax_amount' => (string) $invoice->tax_amount,
@@ -90,6 +95,8 @@ class InvoiceController extends Controller
                 'next_page_url' => $invoices->nextPageUrl(),
             ],
             'statusLabels' => Invoice::statusLabels(),
+            'paymentApprovalLabels' => Invoice::paymentApprovalLabels(),
+            'canManageApprovals' => $request->user() instanceof User ? $request->user()->canApproveInvoicePayment() : false,
         ]);
     }
 
@@ -168,6 +175,7 @@ class InvoiceController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'customer_order_id' => $validated['customer_order_id'] ?? null,
                 'status' => Invoice::STATUS_DRAFT,
+                'payment_approval_status' => Invoice::PAYMENT_APPROVAL_NOT_REQUESTED,
                 'invoice_date' => $validated['invoice_date'],
                 'due_date' => $validated['due_date'] ?? null,
                 'currency_code' => strtoupper((string) ($validated['currency_code'] ?? AppSetting::get('default_currency_code', 'IDR'))),
@@ -206,6 +214,101 @@ class InvoiceController extends Controller
         return to_route('sales.invoices.index');
     }
 
+    /**
+     * Submit payment request that requires management approval.
+     */
+    public function requestPayment(Request $request, Invoice $invoice): RedirectResponse
+    {
+        if ($invoice->status === Invoice::STATUS_PAID) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice sudah berstatus paid.',
+            ]);
+        }
+
+        if ($invoice->payment_approval_status === Invoice::PAYMENT_APPROVAL_PENDING) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Approval payment sedang diproses.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_approval_notes' => ['nullable', 'string'],
+        ]);
+
+        $invoice->update([
+            'payment_approval_status' => Invoice::PAYMENT_APPROVAL_PENDING,
+            'payment_requested_by' => $request->user()?->id,
+            'payment_requested_at' => now(),
+            'payment_approved_by' => null,
+            'payment_approved_at' => null,
+            'payment_rejected_by' => null,
+            'payment_rejected_at' => null,
+            'payment_approval_notes' => $validated['payment_approval_notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Payment approval berhasil diajukan.');
+    }
+
+    /**
+     * Approve payment request and mark invoice as paid.
+     */
+    public function approvePayment(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $this->ensureManagementApprover($request);
+
+        if ($invoice->payment_approval_status !== Invoice::PAYMENT_APPROVAL_PENDING) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice tidak dalam status payment approval pending.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_approval_notes' => ['nullable', 'string'],
+        ]);
+
+        $invoice->update([
+            'status' => Invoice::STATUS_PAID,
+            'payment_approval_status' => Invoice::PAYMENT_APPROVAL_APPROVED,
+            'payment_approved_by' => $request->user()?->id,
+            'payment_approved_at' => now(),
+            'payment_rejected_by' => null,
+            'payment_rejected_at' => null,
+            'payment_approval_notes' => $validated['payment_approval_notes'] ?? $invoice->payment_approval_notes,
+            'paid_at' => now(),
+        ]);
+
+        return back()->with('success', 'Payment berhasil di-approve oleh manajemen.');
+    }
+
+    /**
+     * Reject payment request.
+     */
+    public function rejectPayment(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $this->ensureManagementApprover($request);
+
+        if ($invoice->payment_approval_status !== Invoice::PAYMENT_APPROVAL_PENDING) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice tidak dalam status payment approval pending.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_approval_notes' => ['required', 'string'],
+        ]);
+
+        $invoice->update([
+            'payment_approval_status' => Invoice::PAYMENT_APPROVAL_REJECTED,
+            'payment_rejected_by' => $request->user()?->id,
+            'payment_rejected_at' => now(),
+            'payment_approved_by' => null,
+            'payment_approved_at' => null,
+            'payment_approval_notes' => $validated['payment_approval_notes'],
+        ]);
+
+        return back()->with('success', 'Payment request berhasil di-reject oleh manajemen.');
+    }
+
     public function document(Invoice $invoice): \Symfony\Component\HttpFoundation\Response
     {
         $invoice->loadMissing([
@@ -219,5 +322,17 @@ class InvoiceController extends Controller
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream('Invoice-' . $invoice->invoice_number . '.pdf');
+    }
+
+    /**
+     * Ensure only GM/Director can approve or reject payment.
+     */
+    private function ensureManagementApprover(Request $request): void
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $user->canApproveInvoicePayment()) {
+            throw new AuthorizationException('Hanya GM/Director yang dapat melakukan approval.');
+        }
     }
 }

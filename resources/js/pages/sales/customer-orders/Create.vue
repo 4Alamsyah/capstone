@@ -36,6 +36,7 @@ type Props = {
     nextCoNumber: string;
     defaultCurrency: string;
     currencies: CurrencyOption[];
+    paymentTermsOptions: string[];
 };
 
 const props = defineProps<Props>();
@@ -54,9 +55,7 @@ const form = useForm({
     delivery_date: '',
     shipping_address: '',
     payment_terms: '',
-    project_code: '',
     delivery_type: 'equipment' as 'equipment' | 'material',
-    po_number: '',
     currency_code: '',
     notes: '',
     lines: [
@@ -233,20 +232,15 @@ const submit = () => {
 
                         <div class="grid gap-2 md:col-span-2">
                             <Label for="payment_terms">Payment Terms</Label>
-                            <Input id="payment_terms" v-model="form.payment_terms" placeholder="NET 30" />
+                            <select
+                                id="payment_terms"
+                                v-model="form.payment_terms"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="">- pilih payment terms -</option>
+                                <option v-for="term in props.paymentTermsOptions" :key="term" :value="term">{{ term }}</option>
+                            </select>
                             <InputError :message="form.errors.payment_terms" />
-                        </div>
-
-                        <div class="grid gap-2">
-                            <Label for="project_code">Project Code</Label>
-                            <Input id="project_code" v-model="form.project_code" placeholder="PRJ-001" />
-                            <InputError :message="form.errors.project_code" />
-                        </div>
-
-                        <div class="grid gap-2">
-                            <Label for="po_number">PO Number</Label>
-                            <Input id="po_number" v-model="form.po_number" placeholder="PO-2026-001" />
-                            <InputError :message="form.errors.po_number" />
                         </div>
 
                         <div class="grid gap-2">

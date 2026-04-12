@@ -12,6 +12,10 @@ class Part extends Model
     /** @use HasFactory<\Database\Factories\PartFactory> */
     use HasFactory;
 
+    public const INVENTORY_TYPE_MATERIAL = 'material';
+
+    public const INVENTORY_TYPE_TOOL = 'tool';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -21,6 +25,7 @@ class Part extends Model
         'part_number',
         'name',
         'category',
+        'inventory_type',
         'description',
         'selling_price',
         'safety_stock',
@@ -58,5 +63,13 @@ class Part extends Model
     public function stockMovements(): HasMany
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    /**
+     * Tool borrowing history for this part.
+     */
+    public function toolLoans(): HasMany
+    {
+        return $this->hasMany(ToolLoan::class);
     }
 }

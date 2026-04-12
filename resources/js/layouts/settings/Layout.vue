@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -10,7 +11,28 @@ import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
-const sidebarNavItems: NavItem[] = [
+type AuthUser = {
+    permissions?: Record<string, boolean>;
+};
+
+type SharedPageProps = {
+    auth?: {
+        user?: AuthUser | null;
+    };
+};
+
+const page = usePage<SharedPageProps>();
+
+const hasRoleAccessPermission = computed(() => {
+    return Boolean(page.props.auth?.user?.permissions?.['menu.settings.role_access']);
+});
+
+const hasGeneralSettingPermission = computed(() => {
+    return Boolean(page.props.auth?.user?.permissions?.['menu.settings.general']);
+});
+
+const sidebarNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
     {
         title: 'Profile',
         href: editProfile(),
@@ -23,11 +45,29 @@ const sidebarNavItems: NavItem[] = [
         title: 'Appearance',
         href: editAppearance(),
     },
-    {
-        title: 'General Setting',
-        href: '/settings/general',
-    },
-];
+    ];
+
+    if (hasGeneralSettingPermission.value) {
+        items.push({
+            title: 'General Setting',
+            href: '/settings/general',
+        });
+
+        items.push({
+            title: 'Payment Terms',
+            href: '/settings/general/payment-terms',
+        });
+    }
+
+    if (hasRoleAccessPermission.value) {
+        items.push({
+            title: 'Role Access',
+            href: '/settings/role-access',
+        });
+    }
+
+    return items;
+});
 
 const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>

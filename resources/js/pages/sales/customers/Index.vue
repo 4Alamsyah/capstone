@@ -44,6 +44,7 @@ type Props = {
     };
     defaultCurrency: string;
     currencies: CurrencyOption[];
+    paymentTermsOptions: string[];
     pagination: PaginationMeta;
 };
 
@@ -191,7 +192,14 @@ const deleteCustomer = (customer: CustomerItem) => {
 
                         <div class="grid gap-2">
                             <Label for="payment_terms">Payment Terms</Label>
-                            <Input id="payment_terms" v-model="form.payment_terms" placeholder="Contoh: NET 30" />
+                            <select
+                                id="payment_terms"
+                                v-model="form.payment_terms"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="">- pilih payment terms -</option>
+                                <option v-for="term in props.paymentTermsOptions" :key="`create-${term}`" :value="term">{{ term }}</option>
+                            </select>
                             <InputError :message="form.errors.payment_terms" />
                         </div>
 
@@ -278,7 +286,14 @@ const deleteCustomer = (customer: CustomerItem) => {
 
                             <div class="grid gap-2">
                                 <Label for="edit-payment-terms">Payment Terms</Label>
-                                <Input id="edit-payment-terms" v-model="editForm.payment_terms" />
+                                <select
+                                    id="edit-payment-terms"
+                                    v-model="editForm.payment_terms"
+                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="">- pilih payment terms -</option>
+                                    <option v-for="term in props.paymentTermsOptions" :key="`edit-${term}`" :value="term">{{ term }}</option>
+                                </select>
                                 <InputError :message="editForm.errors.payment_terms" />
                             </div>
 

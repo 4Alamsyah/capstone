@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PurchaseOrder\StorePurchaseArrivalRequest;
 use App\Http\Requests\PurchaseOrder\StorePurchaseOrderRequest;
 use App\Models\AppSetting;
+use App\Models\Bom;
 use App\Models\Currency;
 use App\Models\Part;
 use App\Models\PurchaseArrival;
@@ -14,7 +15,11 @@ use App\Models\PurchaseOrderItem;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WorkOrder;
+use App\Models\WorkOrderLog;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +35,7 @@ class PurchaseOrderController extends Controller
         $statusFilter = $request->string('status')->toString();
 
         $purchaseOrders = PurchaseOrder::query()
-            ->with(['supplier', 'items.part'])
+            ->with(['supplier', 'items.part', 'workOrders'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($inner) use ($search): void {
                     $inner->where('po_number', 'like', "%{$search}%")
@@ -55,10 +60,14 @@ class PurchaseOrderController extends Controller
                 'id' => $purchaseOrder->id,
                 'po_number' => $purchaseOrder->po_number,
                 'status' => $purchaseOrder->status,
+                'approved_at' => $purchaseOrder->approved_at?->format('Y-m-d H:i'),
+                'rejected_at' => $purchaseOrder->rejected_at?->format('Y-m-d H:i'),
+                'approval_notes' => $purchaseOrder->approval_notes,
                 'order_date' => $purchaseOrder->order_date?->format('Y-m-d'),
                 'expected_date' => $purchaseOrder->expected_date?->format('Y-m-d'),
                 'currency_code' => $purchaseOrder->currency_code,
                 'subtotal' => (string) $purchaseOrder->subtotal,
+                'projects' => $purchaseOrder->workOrders->pluck('wo_number')->values(),
                 'supplier' => [
                     'id' => $purchaseOrder->supplier?->id,
                     'name' => $purchaseOrder->supplier?->name,
@@ -89,6 +98,7 @@ class PurchaseOrderController extends Controller
                 'next_page_url' => $purchaseOrders->nextPageUrl(),
             ],
             'statusLabels' => PurchaseOrder::statusLabels(),
+            'canManageApprovals' => $request->user() instanceof User ? $request->user()->canApprovePurchaseOrder() : false,
         ]);
     }
 
@@ -137,7 +147,7 @@ class PurchaseOrderController extends Controller
             $purchaseOrder = PurchaseOrder::query()->create([
                 'po_number' => PurchaseOrder::generateNumber(),
                 'supplier_id' => $validated['supplier_id'],
-                'status' => PurchaseOrder::STATUS_REGISTERED,
+                'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
                 'order_date' => $validated['order_date'],
                 'expected_date' => $validated['expected_date'] ?? null,
                 'currency_code' => strtoupper((string) ($validated['currency_code'] ?? AppSetting::get('default_currency_code', 'IDR'))),
@@ -173,13 +183,82 @@ class PurchaseOrderController extends Controller
         return to_route('purchase.po.index');
     }
 
+    public function approve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $this->ensureManagementApprover($request);
+
+        if ($purchaseOrder->status !== PurchaseOrder::STATUS_PENDING_APPROVAL) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO tidak dalam status pending approval.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'approval_notes' => ['nullable', 'string'],
+        ]);
+
+        $purchaseOrder->update([
+            'status' => PurchaseOrder::STATUS_APPROVED,
+            'approved_by' => $request->user()?->id,
+            'approved_at' => now(),
+            'rejected_by' => null,
+            'rejected_at' => null,
+            'approval_notes' => $validated['approval_notes'] ?? null,
+        ]);
+
+        $generatedWorkOrders = $this->generateWorkOrdersFromPurchaseOrder($purchaseOrder, $request->user()?->id);
+
+        if ($generatedWorkOrders !== []) {
+            $generatedNumbers = collect($generatedWorkOrders)->pluck('wo_number')->implode(', ');
+
+            return back()->with('success', 'PO berhasil di-approve dan MO otomatis dibuat: '.$generatedNumbers.'.');
+        }
+
+        return back()->with('success', 'PO berhasil di-approve oleh manajemen.');
+    }
+
+    public function reject(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $this->ensureManagementApprover($request);
+
+        if ($purchaseOrder->status !== PurchaseOrder::STATUS_PENDING_APPROVAL) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO tidak dalam status pending approval.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'approval_notes' => ['required', 'string'],
+        ]);
+
+        $purchaseOrder->update([
+            'status' => PurchaseOrder::STATUS_REJECTED,
+            'approved_by' => null,
+            'approved_at' => null,
+            'rejected_by' => $request->user()?->id,
+            'rejected_at' => now(),
+            'approval_notes' => $validated['approval_notes'],
+        ]);
+
+        return back()->with('success', 'PO berhasil di-reject oleh manajemen.');
+    }
+
+    public function destroy(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $this->ensurePurchaseOrderDeletable($purchaseOrder);
+
+        $purchaseOrder->delete();
+
+        return back()->with('success', 'PO berhasil dihapus.');
+    }
+
     public function reportIndex(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
 
         $purchaseOrders = PurchaseOrder::query()
             ->with(['supplier', 'items.part'])
-            ->whereIn('status', [PurchaseOrder::STATUS_REGISTERED, PurchaseOrder::STATUS_PARTIAL])
+            ->whereIn('status', [PurchaseOrder::STATUS_APPROVED, PurchaseOrder::STATUS_PARTIAL])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($inner) use ($search): void {
                     $inner->where('po_number', 'like', "%{$search}%")
@@ -269,6 +348,12 @@ class PurchaseOrderController extends Controller
     public function submitArrival(StorePurchaseArrivalRequest $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
         $validated = $request->validated();
+
+        if (! in_array($purchaseOrder->status, [PurchaseOrder::STATUS_APPROVED, PurchaseOrder::STATUS_PARTIAL], true)) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO belum di-approve oleh manajemen, arrival tidak dapat diproses.',
+            ]);
+        }
 
         DB::transaction(function () use ($request, $purchaseOrder, $validated): void {
             $purchaseOrder->loadMissing('items');
@@ -416,5 +501,102 @@ class PurchaseOrderController extends Controller
                 'next_page_url' => $arrivals->nextPageUrl(),
             ],
         ]);
+    }
+
+    /**
+     * Ensure only GM/Director can approve or reject PO.
+     */
+    private function ensureManagementApprover(Request $request): void
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $user->canApprovePurchaseOrder()) {
+            throw new AuthorizationException('Hanya GM/Director yang dapat melakukan approval.');
+        }
+    }
+
+    private function ensurePurchaseOrderDeletable(PurchaseOrder $purchaseOrder): void
+    {
+        if ($purchaseOrder->arrivals()->exists()) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO yang sudah memiliki arrival report tidak bisa dihapus.',
+            ]);
+        }
+
+        if (! in_array($purchaseOrder->status, [
+            PurchaseOrder::STATUS_PENDING_APPROVAL,
+            PurchaseOrder::STATUS_REJECTED,
+            PurchaseOrder::STATUS_CANCELLED,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO hanya bisa dihapus saat masih pending, rejected, atau cancelled.',
+            ]);
+        }
+    }
+
+    /**
+     * Auto-generate work orders from eligible PO items.
+     *
+     * @return array<int, WorkOrder>
+     */
+    private function generateWorkOrdersFromPurchaseOrder(PurchaseOrder $purchaseOrder, ?int $userId = null): array
+    {
+        $purchaseOrder->loadMissing(['items.part', 'workOrders']);
+
+        $eligibleBoms = Bom::query()
+            ->where('is_active', true)
+            ->whereIn('part_id', $purchaseOrder->items->pluck('part_id')->filter()->unique()->values())
+            ->get(['id', 'part_id'])
+            ->keyBy('part_id');
+
+        $createdWorkOrders = [];
+
+        foreach ($purchaseOrder->items->groupBy('part_id') as $partId => $items) {
+            $partIdInt = (int) $partId;
+            $bom = $eligibleBoms->get($partIdInt);
+
+            if (! $bom instanceof Bom) {
+                continue;
+            }
+
+            if ($purchaseOrder->workOrders->contains('bom_id', $bom->id)) {
+                continue;
+            }
+
+            $quantity = (float) $items->sum(fn (PurchaseOrderItem $item): float => (float) $item->quantity);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $workOrder = WorkOrder::query()->create([
+                'wo_number' => WorkOrder::generateNumber(),
+                'bom_id' => $bom->id,
+                'purchase_order_id' => $purchaseOrder->id,
+                'quantity' => $quantity,
+                'status' => 'draft',
+                'scheduled_date' => $purchaseOrder->expected_date ?? $purchaseOrder->order_date,
+                'notes' => 'Auto generated from '.$purchaseOrder->po_number.' for part #'.$partIdInt,
+            ]);
+
+            WorkOrderLog::query()->create([
+                'work_order_id' => $workOrder->id,
+                'user_id' => $userId,
+                'log_type' => 'created',
+                'title' => 'Work order auto-created from PO',
+                'description' => 'Work order dibuat otomatis saat approval purchase order '.$purchaseOrder->po_number.'.',
+                'metadata' => [
+                    'source' => 'purchase_order_approval',
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'purchase_order_number' => $purchaseOrder->po_number,
+                    'status' => $workOrder->status,
+                    'quantity' => (string) $workOrder->quantity,
+                ],
+            ]);
+
+            $createdWorkOrders[] = $workOrder;
+        }
+
+        return $createdWorkOrders;
     }
 }

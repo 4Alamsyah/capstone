@@ -7,6 +7,7 @@ use App\Http\Requests\WorkOrder\StoreWorkOrderRequest;
 use App\Http\Requests\WorkOrder\UpdateWorkOrderRequest;
 use App\Models\Bom;
 use App\Models\BomItem;
+use App\Models\Part;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\WorkOrder;
@@ -21,6 +22,91 @@ use Inertia\Response;
 
 class WorkOrderController extends Controller
 {
+    public function leadTimeTimeline(Request $request): Response
+    {
+        $search = trim((string) $request->string('search'));
+        $statusFilter = $request->string('status')->toString();
+
+        $workOrders = WorkOrder::query()
+            ->with([
+                'bom.part',
+                'purchaseOrder',
+                'logs' => fn ($query) => $query->with('user')->oldest(),
+            ])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($inner) use ($search): void {
+                    $inner->where('wo_number', 'like', "%{$search}%")
+                        ->orWhereHas('bom.part', function ($partQuery) use ($search): void {
+                            $partQuery->where('part_number', 'like', "%{$search}%")
+                                ->orWhere('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($statusFilter !== '', function ($query) use ($statusFilter): void {
+                $query->where('status', $statusFilter);
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return Inertia::render('work-orders/LeadTime', [
+            'workOrders' => collect($workOrders->items())->map(function (WorkOrder $workOrder): array {
+                $startAt = $workOrder->created_at;
+                $lastLogAt = $workOrder->logs->last()?->created_at;
+
+                $endAt = in_array($workOrder->status, ['completed', 'cancelled'], true)
+                    ? ($lastLogAt ?? $workOrder->updated_at)
+                    : now();
+
+                $leadTimeHours = max(0, round($startAt->diffInMinutes($endAt) / 60, 2));
+
+                return [
+                    'id' => $workOrder->id,
+                    'wo_number' => $workOrder->wo_number,
+                    'status' => $workOrder->status,
+                    'status_label' => WorkOrder::statusLabels()[$workOrder->status] ?? $workOrder->status,
+                    'product' => [
+                        'part_number' => $workOrder->bom->part->part_number,
+                        'name' => $workOrder->bom->part->name,
+                        'bom_name' => $workOrder->bom->name,
+                    ],
+                    'source_po' => $workOrder->purchaseOrder?->po_number,
+                    'created_at' => $startAt->format('Y-m-d H:i'),
+                    'ended_at' => $endAt->format('Y-m-d H:i'),
+                    'lead_time_hours' => $leadTimeHours,
+                    'timeline' => $workOrder->logs->map(function (WorkOrderLog $log) use ($startAt): array {
+                        $hoursFromStart = max(0, round($startAt->diffInMinutes($log->created_at) / 60, 2));
+
+                        return [
+                            'id' => $log->id,
+                            'log_type' => $log->log_type,
+                            'title' => $log->title,
+                            'description' => $log->description,
+                            'user_name' => $log->user?->name,
+                            'created_at' => $log->created_at->format('Y-m-d H:i'),
+                            'hours_from_start' => $hoursFromStart,
+                        ];
+                    })->values(),
+                ];
+            })->values(),
+            'filters' => [
+                'search' => $search,
+                'status' => $statusFilter,
+            ],
+            'pagination' => [
+                'current_page' => $workOrders->currentPage(),
+                'last_page' => $workOrders->lastPage(),
+                'per_page' => $workOrders->perPage(),
+                'total' => $workOrders->total(),
+                'from' => $workOrders->firstItem(),
+                'to' => $workOrders->lastItem(),
+                'prev_page_url' => $workOrders->previousPageUrl(),
+                'next_page_url' => $workOrders->nextPageUrl(),
+            ],
+            'statusLabels' => WorkOrder::statusLabels(),
+        ]);
+    }
+
     /**
      * List work orders with search + pagination.
      */
@@ -30,7 +116,7 @@ class WorkOrderController extends Controller
         $statusFilter = $request->string('status')->toString();
 
         $workOrders = WorkOrder::query()
-            ->with('bom.part')
+            ->with(['bom.part', 'purchaseOrder'])
             ->when($search !== '', function ($q) use ($search): void {
                 $q->where(function ($inner) use ($search): void {
                     $inner->where('wo_number', 'like', "%{$search}%")
@@ -56,6 +142,10 @@ class WorkOrderController extends Controller
                 'scheduled_date' => $wo->scheduled_date?->format('Y-m-d'),
                 'notes'          => $wo->notes,
                 'created_at'     => $wo->created_at->format('Y-m-d'),
+                'purchase_order' => [
+                    'id' => $wo->purchaseOrder?->id,
+                    'po_number' => $wo->purchaseOrder?->po_number,
+                ],
                 'bom'            => [
                     'id'   => $wo->bom->id,
                     'name' => $wo->bom->name,
@@ -302,6 +392,7 @@ class WorkOrderController extends Controller
                 }
 
                 $stock = Stock::query()
+                    ->with('part:id,inventory_type')
                     ->where('part_id', $consumption['part_id'])
                     ->where('warehouse_id', $consumption['warehouse_id'])
                     ->lockForUpdate()
@@ -316,6 +407,12 @@ class WorkOrderController extends Controller
                 if ($stock->quantity < $quantity) {
                     throw ValidationException::withMessages([
                         "consumptions.{$index}.quantity" => 'Stock tidak cukup untuk dikonsumsi dari warehouse tersebut.',
+                    ]);
+                }
+
+                if ($stock->part?->inventory_type === Part::INVENTORY_TYPE_TOOL) {
+                    throw ValidationException::withMessages([
+                        "consumptions.{$index}.quantity" => 'Part dengan tipe tool tidak boleh dikonsumsi. Gunakan alur peminjaman tools.',
                     ]);
                 }
 
@@ -384,7 +481,7 @@ class WorkOrderController extends Controller
      */
     public function show(WorkOrder $workOrder): Response
     {
-        $workOrder->load(['bom.part', 'bom.items.componentPart', 'bom.items.workCenter', 'reports']);
+        $workOrder->load(['bom.part', 'bom.items.componentPart', 'bom.items.workCenter', 'purchaseOrder', 'reports']);
 
         return Inertia::render('work-orders/Show', [
             'workOrder' => [
@@ -395,6 +492,10 @@ class WorkOrderController extends Controller
                 'scheduled_date' => $workOrder->scheduled_date?->format('Y-m-d'),
                 'notes'          => $workOrder->notes,
                 'created_at'     => $workOrder->created_at->format('Y-m-d H:i'),
+                'purchase_order' => [
+                    'id' => $workOrder->purchaseOrder?->id,
+                    'po_number' => $workOrder->purchaseOrder?->po_number,
+                ],
                 'reports_count' => $workOrder->reports->count(),
                 'bom'            => [
                     'id'   => $workOrder->bom->id,

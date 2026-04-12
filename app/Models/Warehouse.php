@@ -36,4 +36,12 @@ class Warehouse extends Model
     {
         return $this->hasMany(StockMovement::class);
     }
+
+    /**
+     * Tool loans issued from this warehouse.
+     */
+    public function toolLoans(): HasMany
+    {
+        return $this->hasMany(ToolLoan::class);
+    }
 }

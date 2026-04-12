@@ -19,6 +19,14 @@ class Invoice extends Model
 
     public const STATUS_CANCELLED = 9;
 
+    public const PAYMENT_APPROVAL_NOT_REQUESTED = 0;
+
+    public const PAYMENT_APPROVAL_PENDING = 1;
+
+    public const PAYMENT_APPROVAL_APPROVED = 2;
+
+    public const PAYMENT_APPROVAL_REJECTED = 3;
+
     /**
      * @var list<string>
      */
@@ -27,6 +35,13 @@ class Invoice extends Model
         'customer_id',
         'customer_order_id',
         'status',
+        'payment_approval_status',
+        'payment_requested_by',
+        'payment_requested_at',
+        'payment_approved_by',
+        'payment_approved_at',
+        'payment_rejected_by',
+        'payment_rejected_at',
         'invoice_date',
         'due_date',
         'currency_code',
@@ -34,6 +49,8 @@ class Invoice extends Model
         'tax_amount',
         'total_amount',
         'notes',
+        'payment_approval_notes',
+        'paid_at',
     ];
 
     /**
@@ -45,6 +62,10 @@ class Invoice extends Model
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'payment_requested_at' => 'datetime',
+        'payment_approved_at' => 'datetime',
+        'payment_rejected_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -84,6 +105,19 @@ class Invoice extends Model
             self::STATUS_SENT => 'Sent',
             self::STATUS_PAID => 'Paid',
             self::STATUS_CANCELLED => 'Cancelled',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function paymentApprovalLabels(): array
+    {
+        return [
+            self::PAYMENT_APPROVAL_NOT_REQUESTED => 'Not Requested',
+            self::PAYMENT_APPROVAL_PENDING => 'Pending Approval',
+            self::PAYMENT_APPROVAL_APPROVED => 'Approved',
+            self::PAYMENT_APPROVAL_REJECTED => 'Rejected',
         ];
     }
 }

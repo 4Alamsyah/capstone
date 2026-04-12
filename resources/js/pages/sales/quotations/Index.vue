@@ -85,6 +85,14 @@ const deleteQuotation = (quotation: QuotationItem) => {
     useForm({}).delete(`/sales/quotations/${quotation.id}`);
 };
 
+const generateCustomerOrder = (quotation: QuotationItem) => {
+    if (!window.confirm(`Generate Customer Order dari quotation ${quotation.quotation_number}?`)) {
+        return;
+    }
+
+    useForm({}).post(`/sales/quotations/${quotation.id}/generate-customer-order`);
+};
+
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
         return 'No quotations found';
@@ -156,6 +164,9 @@ const paginationText = computed(() => {
                                 <td class="py-2 pr-3 font-semibold">{{ Number(quotation.subtotal).toLocaleString() }} {{ quotation.currency_code }}</td>
                                 <td class="py-2 pr-3 text-right">
                                     <div class="flex justify-end gap-2">
+                                        <Button size="sm" variant="default" @click="generateCustomerOrder(quotation)">
+                                            Generate CO
+                                        </Button>
                                         <Button size="sm" variant="outline" as-child>
                                             <Link :href="`/sales/quotations/${quotation.id}/edit`">Edit</Link>
                                         </Button>

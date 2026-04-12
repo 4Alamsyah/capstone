@@ -25,6 +25,10 @@ type WorkOrderDetail = {
     scheduled_date: string | null;
     notes: string | null;
     created_at: string;
+    purchase_order: {
+        id: number | null;
+        po_number: string | null;
+    };
     reports_count: number;
     bom: {
         id: number;
@@ -145,6 +149,10 @@ const deleteWo = () => {
                         <div>
                             <dt class="text-xs text-muted-foreground">Created</dt>
                             <dd>{{ workOrder.created_at }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-muted-foreground">Source PO</dt>
+                            <dd>{{ workOrder.purchase_order.po_number ?? '–' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-muted-foreground">Report Count</dt>

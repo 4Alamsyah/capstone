@@ -11,11 +11,15 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
-    public const STATUS_REGISTERED = 1;
+    public const STATUS_PENDING_APPROVAL = 1;
 
-    public const STATUS_PARTIAL = 2;
+    public const STATUS_APPROVED = 2;
 
-    public const STATUS_COMPLETED = 3;
+    public const STATUS_PARTIAL = 3;
+
+    public const STATUS_COMPLETED = 4;
+
+    public const STATUS_REJECTED = 8;
 
     public const STATUS_CANCELLED = 9;
 
@@ -23,17 +27,24 @@ class PurchaseOrder extends Model
         'po_number',
         'supplier_id',
         'status',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at',
         'order_date',
         'expected_date',
         'currency_code',
         'subtotal',
         'notes',
+        'approval_notes',
     ];
 
     protected $casts = [
         'order_date' => 'date',
         'expected_date' => 'date',
         'subtotal' => 'decimal:2',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function supplier(): BelongsTo
@@ -49,6 +60,11 @@ class PurchaseOrder extends Model
     public function arrivals(): HasMany
     {
         return $this->hasMany(PurchaseArrival::class);
+    }
+
+    public function workOrders(): HasMany
+    {
+        return $this->hasMany(WorkOrder::class);
     }
 
     public static function generateNumber(): string
@@ -69,9 +85,11 @@ class PurchaseOrder extends Model
     public static function statusLabels(): array
     {
         return [
-            self::STATUS_REGISTERED => 'Registered',
+            self::STATUS_PENDING_APPROVAL => 'Pending Approval',
+            self::STATUS_APPROVED => 'Approved',
             self::STATUS_PARTIAL => 'Partial Arrival',
             self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_REJECTED => 'Rejected',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
     }

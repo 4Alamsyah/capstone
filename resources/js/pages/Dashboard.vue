@@ -51,8 +51,12 @@ type DashboardAnalytics = {
 		total: number;
 		lowStock: number;
 		overstock: number;
+		materialTotal: number;
+		toolTotal: number;
+		activeToolLoans: number;
 		topStockItems: Array<{
 			part_name: string;
+			inventory_type: 'material' | 'tool' | null;
 			quantity: number;
 			warehouse: string;
 		}>;
@@ -297,6 +301,14 @@ onMounted(() => {
 								<span>Total Item Stok</span>
 								<strong>{{ formatNumber(analytics.inventory.total) }}</strong>
 							</div>
+							<div class="flex items-center justify-between rounded-md bg-emerald-50 px-3 py-2 text-emerald-700">
+								<span>Material Item</span>
+								<strong>{{ formatNumber(analytics.inventory.materialTotal) }}</strong>
+							</div>
+							<div class="flex items-center justify-between rounded-md bg-indigo-50 px-3 py-2 text-indigo-700">
+								<span>Tool Item</span>
+								<strong>{{ formatNumber(analytics.inventory.toolTotal) }}</strong>
+							</div>
 							<div class="flex items-center justify-between rounded-md bg-amber-50 px-3 py-2 text-amber-700">
 								<span>Low Stock</span>
 								<strong>{{ formatNumber(analytics.inventory.lowStock) }}</strong>
@@ -304,6 +316,10 @@ onMounted(() => {
 							<div class="flex items-center justify-between rounded-md bg-blue-50 px-3 py-2 text-blue-700">
 								<span>Overstock</span>
 								<strong>{{ formatNumber(analytics.inventory.overstock) }}</strong>
+							</div>
+							<div class="flex items-center justify-between rounded-md bg-orange-50 px-3 py-2 text-orange-700">
+								<span>Tool Dipinjam</span>
+								<strong>{{ formatNumber(analytics.inventory.activeToolLoans) }}</strong>
 							</div>
 						</div>
 
@@ -371,14 +387,16 @@ onMounted(() => {
 						<ul class="space-y-2 text-sm">
 							<li
 								v-for="stock in analytics.inventory.topStockItems"
-								:key="`${stock.part_name}-${stock.warehouse}`"
+								:key="`${stock.part_name}-${stock.warehouse}-${stock.inventory_type ?? 'unknown'}`"
 								class="rounded-md bg-muted/40 px-3 py-2"
 							>
 								<div class="flex items-center justify-between">
 									<span class="font-medium">{{ stock.part_name }}</span>
 									<span>{{ formatNumber(stock.quantity) }}</span>
 								</div>
-								<p class="text-xs text-muted-foreground">{{ stock.warehouse }}</p>
+								<p class="text-xs text-muted-foreground">
+									{{ stock.warehouse }} • {{ stock.inventory_type === 'tool' ? 'Tool' : 'Material' }}
+								</p>
 							</li>
 							<li
 								v-if="analytics.inventory.topStockItems.length === 0"

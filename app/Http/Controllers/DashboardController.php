@@ -9,6 +9,7 @@ use App\Models\CustomerOrder;
 use App\Models\Part;
 use App\Models\Stock;
 use App\Models\Supplier;
+use App\Models\ToolLoan;
 use App\Models\WorkCenter;
 use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
@@ -97,18 +98,24 @@ class DashboardController extends Controller
     private function getInventoryAnalytics(): array
     {
         $stocks = Stock::with('part', 'warehouse')->get();
+        $materialStocks = $stocks->filter(fn($stock) => $stock->part?->inventory_type === Part::INVENTORY_TYPE_MATERIAL);
+        $toolStocks = $stocks->filter(fn($stock) => $stock->part?->inventory_type === Part::INVENTORY_TYPE_TOOL);
         $lowStockThreshold = $this->lowStockThreshold();
         $overStockThreshold = $this->overStockThreshold();
 
         return [
             'total' => $stocks->count(),
-            'lowStock' => $stocks->filter(fn($s) => $s->quantity <= $lowStockThreshold)->count(),
-            'overstock' => $stocks->filter(fn($s) => $s->quantity >= $overStockThreshold)->count(),
+            'lowStock' => $materialStocks->filter(fn($s) => $s->quantity <= $lowStockThreshold)->count(),
+            'overstock' => $materialStocks->filter(fn($s) => $s->quantity >= $overStockThreshold)->count(),
+            'materialTotal' => $materialStocks->count(),
+            'toolTotal' => $toolStocks->count(),
+            'activeToolLoans' => ToolLoan::where('status', ToolLoan::STATUS_BORROWED)->count(),
             'topStockItems' => $stocks
                 ->sortByDesc('quantity')
                 ->take(5)
                 ->map(fn($s) => [
                     'part_name' => $s->part?->name ?? 'N/A',
+                    'inventory_type' => $s->part?->inventory_type,
                     'quantity' => $s->quantity,
                     'warehouse' => $s->warehouse?->name ?? 'N/A',
                 ]),

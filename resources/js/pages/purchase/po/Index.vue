@@ -22,10 +22,14 @@ type PurchaseOrderRow = {
     id: number;
     po_number: string;
     status: number;
+    approved_at: string | null;
+    rejected_at: string | null;
+    approval_notes: string | null;
     order_date: string | null;
     expected_date: string | null;
     currency_code: string;
     subtotal: string;
+    projects: string[];
     supplier: {
         id: number | null;
         name: string | null;
@@ -52,6 +56,7 @@ type Props = {
     };
     pagination: PaginationMeta;
     statusLabels: Record<string, string>;
+    canManageApprovals: boolean;
 };
 
 const props = defineProps<Props>();
@@ -67,10 +72,50 @@ const filterForm = useForm({
 });
 
 const statusColors: Record<number, string> = {
-    1: 'bg-gray-100 text-gray-700',
-    2: 'bg-amber-100 text-amber-700',
-    3: 'bg-green-100 text-green-700',
+    1: 'bg-amber-100 text-amber-700',
+    2: 'bg-emerald-100 text-emerald-700',
+    3: 'bg-blue-100 text-blue-700',
+    4: 'bg-green-100 text-green-700',
+    8: 'bg-rose-100 text-rose-700',
     9: 'bg-red-100 text-red-700',
+};
+
+const approvePo = (po: PurchaseOrderRow) => {
+    const notes = window.prompt('Catatan approval (opsional):', po.approval_notes ?? '') ?? '';
+
+    useForm({
+        approval_notes: notes,
+    }).post(`/purchase/po/${po.id}/approve`, {
+        preserveScroll: true,
+    });
+};
+
+const rejectPo = (po: PurchaseOrderRow) => {
+    const notes = window.prompt('Alasan reject (wajib):', po.approval_notes ?? '') ?? '';
+
+    if (notes.trim() === '') {
+        window.alert('Alasan reject wajib diisi.');
+
+        return;
+    }
+
+    useForm({
+        approval_notes: notes,
+    }).post(`/purchase/po/${po.id}/reject`, {
+        preserveScroll: true,
+    });
+};
+
+const deletePo = (po: PurchaseOrderRow) => {
+    const confirmed = window.confirm(`Hapus PO ${po.po_number}? Tindakan ini tidak bisa dibatalkan.`);
+
+    if (!confirmed) {
+        return;
+    }
+
+    useForm({}).delete(`/purchase/po/${po.id}`, {
+        preserveScroll: true,
+    });
 };
 
 const submitFilter = () => {
@@ -137,14 +182,16 @@ const paginationText = computed(() => {
                                 <th class="py-2 pr-3">Order Date</th>
                                 <th class="py-2 pr-3">Expected Date</th>
                                 <th class="py-2 pr-3">Subtotal</th>
+                                <th class="py-2 pr-3">Project</th>
                                 <th class="py-2 pr-3">Status</th>
+                                <th class="py-2 pr-3">Approval Notes</th>
                                 <th class="py-2 pr-3">Items</th>
                                 <th class="py-2 pr-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="props.purchaseOrders.length === 0">
-                                <td colspan="8" class="py-8 text-center text-muted-foreground">No purchase orders found.</td>
+                                <td colspan="10" class="py-8 text-center text-muted-foreground">No purchase orders found.</td>
                             </tr>
                             <tr v-for="po in props.purchaseOrders" :key="po.id" class="border-b border-sidebar-border/40 align-top last:border-0">
                                 <td class="py-2 pr-3 font-mono font-medium">{{ po.po_number }}</td>
@@ -152,10 +199,21 @@ const paginationText = computed(() => {
                                 <td class="py-2 pr-3">{{ po.order_date ?? '-' }}</td>
                                 <td class="py-2 pr-3">{{ po.expected_date ?? '-' }}</td>
                                 <td class="py-2 pr-3 font-semibold">{{ Number(po.subtotal).toLocaleString() }} {{ po.currency_code }}</td>
+                                <td class="py-2 pr-3 text-xs text-muted-foreground">
+                                    <div v-if="po.projects.length > 0" class="space-y-1">
+                                        <div v-for="project in po.projects" :key="project" class="font-mono text-xs font-medium text-foreground">
+                                            {{ project }}
+                                        </div>
+                                    </div>
+                                    <span v-else>-</span>
+                                </td>
                                 <td class="py-2 pr-3">
                                     <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="statusColors[po.status]">
                                         {{ props.statusLabels[String(po.status)] ?? po.status }}
                                     </span>
+                                </td>
+                                <td class="py-2 pr-3 text-xs text-muted-foreground">
+                                    {{ po.approval_notes || '-' }}
                                 </td>
                                 <td class="py-2 pr-3">
                                     <div class="space-y-1">
@@ -165,9 +223,35 @@ const paginationText = computed(() => {
                                     </div>
                                 </td>
                                 <td class="py-2 pr-3 text-right">
-                                    <Button v-if="po.status === 1 || po.status === 2" size="sm" variant="outline" as-child>
-                                        <Link :href="`/purchase/po/${po.id}/arrivals/report`">Report Arrival</Link>
-                                    </Button>
+                                    <div class="flex justify-end gap-2">
+                                        <Button v-if="po.status === 2 || po.status === 3" size="sm" variant="outline" as-child>
+                                            <Link :href="`/purchase/po/${po.id}/arrivals/report`">Report Arrival</Link>
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && po.status === 1"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="approvePo(po)"
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && po.status === 1"
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="rejectPo(po)"
+                                        >
+                                            Reject
+                                        </Button>
+                                        <Button
+                                            v-if="po.status === 1 || po.status === 8 || po.status === 9"
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="deletePo(po)"
+                                        >
+                                            Hapus
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

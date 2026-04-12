@@ -20,6 +20,10 @@ type WorkOrderItem = {
     quantity: string;
     scheduled_date: string | null;
     created_at: string;
+    purchase_order: {
+        id: number | null;
+        po_number: string | null;
+    };
     bom: WoBom;
 };
 
@@ -127,6 +131,7 @@ const paginationText = computed(() => {
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
                                 <th class="py-2 pr-3">WO Number</th>
+                                <th class="py-2 pr-3">Source PO</th>
                                 <th class="py-2 pr-3">Product</th>
                                 <th class="py-2 pr-3">BOM</th>
                                 <th class="py-2 pr-3">Qty</th>
@@ -137,7 +142,7 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="workOrders.length === 0">
-                                <td colspan="7" class="py-8 text-center text-muted-foreground">No work orders found.</td>
+                                <td colspan="8" class="py-8 text-center text-muted-foreground">No work orders found.</td>
                             </tr>
                             <tr
                                 v-for="wo in workOrders"
@@ -145,6 +150,9 @@ const paginationText = computed(() => {
                                 class="border-b border-sidebar-border/40 last:border-0"
                             >
                                 <td class="py-2 pr-3 font-mono font-medium">{{ wo.wo_number }}</td>
+                                <td class="py-2 pr-3 font-mono text-xs text-muted-foreground">
+                                    {{ wo.purchase_order.po_number ?? '-' }}
+                                </td>
                                 <td class="py-2 pr-3">
                                     <span class="text-xs text-muted-foreground">{{ wo.bom.part.part_number }}</span><br />
                                     {{ wo.bom.part.name }}

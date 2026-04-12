@@ -43,6 +43,7 @@ const form = useForm({
     part_number: '',
     name: '',
     category: 'purchase',
+    inventory_type: 'material' as 'material' | 'tool',
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -191,6 +192,19 @@ const submit = () => {
                             <option value="manufacture">Manufacture Part</option>
                         </select>
                         <InputError :message="form.errors.category" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="inventory_type">Inventory Type</Label>
+                        <select
+                            id="inventory_type"
+                            v-model="form.inventory_type"
+                            class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="material">Material (Consumable)</option>
+                            <option value="tool">Tool (Borrow/Return)</option>
+                        </select>
+                        <InputError :message="form.errors.inventory_type" />
                     </div>
 
                     <div class="grid gap-2 md:col-span-2">

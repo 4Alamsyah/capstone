@@ -43,6 +43,7 @@ type PartItem = {
     part_number: string;
     name: string;
     category: 'purchase' | 'manufacture';
+    inventory_type: 'material' | 'tool';
     description: string | null;
     selling_price: number;
     safety_stock: number;
@@ -83,6 +84,7 @@ const editForm = useForm({
     part_number: '',
     name: '',
     category: 'purchase' as 'purchase' | 'manufacture',
+    inventory_type: 'material' as 'material' | 'tool',
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -109,6 +111,10 @@ const formatCurrency = (value: number): string => {
 
 const formatCategory = (category: 'purchase' | 'manufacture'): string => {
     return category === 'manufacture' ? 'Manufacture Part' : 'Purchase Part';
+};
+
+const formatInventoryType = (inventoryType: 'material' | 'tool'): string => {
+    return inventoryType === 'tool' ? 'Tool (Borrow/Return)' : 'Material (Consumable)';
 };
 
 const paginationText = computed(() => {
@@ -139,6 +145,7 @@ const openEditDialog = (part: PartItem) => {
     editForm.part_number = part.part_number;
     editForm.name = part.name;
     editForm.category = part.category;
+    editForm.inventory_type = part.inventory_type;
     editForm.description = part.description ?? '';
     editForm.selling_price = part.selling_price;
     editForm.safety_stock = part.safety_stock;
@@ -226,6 +233,7 @@ const deletePart = (part: PartItem) => {
                             <th class="px-4 py-3 font-medium">Part Number</th>
                             <th class="px-4 py-3 font-medium">Part Name</th>
                             <th class="px-4 py-3 font-medium">Category</th>
+                            <th class="px-4 py-3 font-medium">Inventory Type</th>
                             <th class="px-4 py-3 font-medium">Supplier Prices</th>
                             <th class="px-4 py-3 font-medium">Selling Price</th>
                             <th class="px-4 py-3 font-medium">Safety Stock</th>
@@ -243,6 +251,7 @@ const deletePart = (part: PartItem) => {
                                 </p>
                             </td>
                             <td class="px-4 py-3">{{ formatCategory(part.category) }}</td>
+                            <td class="px-4 py-3">{{ formatInventoryType(part.inventory_type) }}</td>
                             <td class="px-4 py-3">
                                 <ul v-if="part.suppliers.length" class="space-y-1">
                                     <li v-for="supplier in part.suppliers" :key="supplier.id">
@@ -267,7 +276,7 @@ const deletePart = (part: PartItem) => {
                             </td>
                         </tr>
                         <tr v-if="!parts.length">
-                            <td colspan="8" class="px-4 py-8 text-center text-muted-foreground">
+                            <td colspan="9" class="px-4 py-8 text-center text-muted-foreground">
                                 Data part tidak ditemukan.
                             </td>
                         </tr>
@@ -322,6 +331,19 @@ const deletePart = (part: PartItem) => {
                                     <option value="manufacture">Manufacture Part</option>
                                 </select>
                                 <InputError :message="editForm.errors.category" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="edit-inventory-type">Inventory Type</Label>
+                                <select
+                                    id="edit-inventory-type"
+                                    v-model="editForm.inventory_type"
+                                    class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="material">Material (Consumable)</option>
+                                    <option value="tool">Tool (Borrow/Return)</option>
+                                </select>
+                                <InputError :message="editForm.errors.inventory_type" />
                             </div>
 
                             <div class="grid gap-2 md:col-span-2">

@@ -60,6 +60,11 @@ class CustomerController extends Controller
                     'name' => $currency->name,
                 ])
                 ->values(),
+            'paymentTermsOptions' => collect(json_decode((string) AppSetting::get('payment_terms_options', '[]'), true))
+                ->filter(fn ($term): bool => is_string($term) && trim($term) !== '')
+                ->map(fn ($term): string => trim((string) $term))
+                ->unique(fn (string $term): string => mb_strtolower($term))
+                ->values(),
             'pagination' => [
                 'current_page' => $customers->currentPage(),
                 'last_page' => $customers->lastPage(),

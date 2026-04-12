@@ -13,6 +13,9 @@ type InvoiceItem = {
     invoice_date: string | null;
     due_date: string | null;
     status: number;
+    payment_approval_status: number;
+    payment_approval_notes: string | null;
+    paid_at: string | null;
     currency_code: string;
     subtotal: string;
     tax_amount: string;
@@ -55,6 +58,8 @@ type Props = {
     };
     pagination: PaginationMeta;
     statusLabels: Record<string, string>;
+    paymentApprovalLabels: Record<string, string>;
+    canManageApprovals: boolean;
 };
 
 const props = defineProps<Props>();
@@ -69,6 +74,42 @@ const statusColors: Record<number, string> = {
     2: 'bg-blue-100 text-blue-700',
     3: 'bg-green-100 text-green-700',
     9: 'bg-red-100 text-red-700',
+};
+
+const paymentStatusColors: Record<number, string> = {
+    0: 'bg-gray-100 text-gray-700',
+    1: 'bg-amber-100 text-amber-700',
+    2: 'bg-emerald-100 text-emerald-700',
+    3: 'bg-rose-100 text-rose-700',
+};
+
+const requestPaymentApproval = (invoice: InvoiceItem) => {
+    const notes = window.prompt('Catatan pengajuan payment (opsional):', invoice.payment_approval_notes ?? '') ?? '';
+
+    useForm({ payment_approval_notes: notes }).post(`/sales/invoices/${invoice.id}/payment-request`, {
+        preserveScroll: true,
+    });
+};
+
+const approvePayment = (invoice: InvoiceItem) => {
+    const notes = window.prompt('Catatan approval payment (opsional):', invoice.payment_approval_notes ?? '') ?? '';
+
+    useForm({ payment_approval_notes: notes }).post(`/sales/invoices/${invoice.id}/payment-approve`, {
+        preserveScroll: true,
+    });
+};
+
+const rejectPayment = (invoice: InvoiceItem) => {
+    const notes = window.prompt('Alasan reject payment (wajib):', invoice.payment_approval_notes ?? '') ?? '';
+
+    if (notes.trim() === '') {
+        window.alert('Alasan reject wajib diisi.');
+        return;
+    }
+
+    useForm({ payment_approval_notes: notes }).post(`/sales/invoices/${invoice.id}/payment-reject`, {
+        preserveScroll: true,
+    });
 };
 
 const filterForm = useForm({
@@ -142,13 +183,14 @@ const paginationText = computed(() => {
                                 <th class="py-2 pr-3">Due Date</th>
                                 <th class="py-2 pr-3">Total</th>
                                 <th class="py-2 pr-3">Status</th>
+                                <th class="py-2 pr-3">Payment Approval</th>
                                 <th class="py-2 pr-3">Items</th>
                                 <th class="py-2 pr-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="props.invoices.length === 0">
-                                <td colspan="9" class="py-8 text-center text-muted-foreground">No invoices found.</td>
+                                <td colspan="10" class="py-8 text-center text-muted-foreground">No invoices found.</td>
                             </tr>
                             <tr v-for="invoice in props.invoices" :key="invoice.id" class="border-b border-sidebar-border/40 align-top last:border-0">
                                 <td class="py-2 pr-3 font-mono font-medium">{{ invoice.invoice_number }}</td>
@@ -164,15 +206,49 @@ const paginationText = computed(() => {
                                 </td>
                                 <td class="py-2 pr-3">
                                     <div class="space-y-1">
+                                        <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="paymentStatusColors[invoice.payment_approval_status]">
+                                            {{ props.paymentApprovalLabels[String(invoice.payment_approval_status)] ?? invoice.payment_approval_status }}
+                                        </span>
+                                        <p class="text-xs text-muted-foreground">{{ invoice.payment_approval_notes ?? '-' }}</p>
+                                    </div>
+                                </td>
+                                <td class="py-2 pr-3">
+                                    <div class="space-y-1">
                                         <div v-for="item in invoice.items" :key="item.id" class="text-xs text-muted-foreground">
                                             {{ item.description || ([item.part_number, item.part_name].filter(Boolean).join(' - ')) || '-' }} x {{ item.quantity }}
                                         </div>
                                     </div>
                                 </td>
                                 <td class="py-2 pr-3 text-right">
-                                    <Button size="sm" variant="outline" as-child>
-                                        <a :href="`/sales/invoices/${invoice.id}/document`" target="_blank" rel="noopener">Download Invoice PDF</a>
-                                    </Button>
+                                    <div class="flex justify-end gap-2">
+                                        <Button size="sm" variant="outline" as-child>
+                                            <a :href="`/sales/invoices/${invoice.id}/document`" target="_blank" rel="noopener">Download Invoice PDF</a>
+                                        </Button>
+                                        <Button
+                                            v-if="invoice.status !== 3 && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3)"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="requestPaymentApproval(invoice)"
+                                        >
+                                            Request Payment Approval
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && invoice.payment_approval_status === 1"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="approvePayment(invoice)"
+                                        >
+                                            Approve Payment
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && invoice.payment_approval_status === 1"
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="rejectPayment(invoice)"
+                                        >
+                                            Reject Payment
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

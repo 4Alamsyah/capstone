@@ -9,6 +9,7 @@ use App\Models\PartSupplierPrice;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\ToolLoan;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,7 @@ class PartController extends Controller
                     'part_number' => $part->part_number,
                     'name' => $part->name,
                     'category' => $part->category,
+                    'inventory_type' => $part->inventory_type,
                     'description' => $part->description,
                     'selling_price' => (float) $part->selling_price,
                     'safety_stock' => (int) $part->safety_stock,
@@ -119,6 +121,7 @@ class PartController extends Controller
                 'part_number' => $validated['part_number'],
                 'name' => $validated['name'],
                 'category' => $validated['category'],
+                'inventory_type' => $validated['inventory_type'],
                 'description' => $validated['description'] ?? null,
                 'selling_price' => $validated['selling_price'],
                 'safety_stock' => $validated['safety_stock'],
@@ -163,6 +166,7 @@ class PartController extends Controller
                 'part_number' => $validated['part_number'],
                 'name' => $validated['name'],
                 'category' => $validated['category'],
+                'inventory_type' => $validated['inventory_type'],
                 'description' => $validated['description'] ?? null,
                 'selling_price' => $validated['selling_price'],
                 'safety_stock' => $validated['safety_stock'],
@@ -213,7 +217,7 @@ class PartController extends Controller
     public function stock(): Response
     {
         $stocks = Stock::query()
-            ->with(['part:id,part_number,name', 'warehouse:id,code,name'])
+            ->with(['part:id,part_number,name,inventory_type', 'warehouse:id,code,name'])
             ->orderByDesc('quantity')
             ->get()
             ->map(function (Stock $stock): array {
@@ -221,6 +225,7 @@ class PartController extends Controller
                     'id' => $stock->id,
                     'part_number' => $stock->part?->part_number,
                     'part_name' => $stock->part?->name,
+                    'inventory_type' => $stock->part?->inventory_type,
                     'warehouse_code' => $stock->warehouse?->code,
                     'warehouse_name' => $stock->warehouse?->name,
                     'quantity' => (int) $stock->quantity,
@@ -228,20 +233,22 @@ class PartController extends Controller
             });
 
         $stockSummary = Stock::query()
-            ->selectRaw('warehouse_id, SUM(quantity) as total_quantity')
-            ->groupBy('warehouse_id')
+            ->join('parts', 'parts.id', '=', 'stocks.part_id')
+            ->selectRaw('stocks.warehouse_id, parts.inventory_type, SUM(stocks.quantity) as total_quantity')
+            ->groupBy('stocks.warehouse_id', 'parts.inventory_type')
             ->with('warehouse:id,code,name')
             ->get()
             ->map(function (Stock $stock): array {
                 return [
                     'warehouse_code' => $stock->warehouse?->code,
                     'warehouse_name' => $stock->warehouse?->name,
+                    'inventory_type' => $stock->inventory_type,
                     'total_quantity' => (int) $stock->total_quantity,
                 ];
             });
 
         $history = StockMovement::query()
-            ->with(['part:id,part_number,name', 'warehouse:id,code,name', 'workOrder:id,wo_number'])
+            ->with(['part:id,part_number,name,inventory_type', 'warehouse:id,code,name', 'workOrder:id,wo_number', 'toolLoan:id,borrower_name'])
             ->latest()
             ->limit(50)
             ->get()
@@ -250,10 +257,13 @@ class PartController extends Controller
                     'id' => $movement->id,
                     'part_number' => $movement->part?->part_number,
                     'part_name' => $movement->part?->name,
+                    'inventory_type' => $movement->part?->inventory_type,
                     'warehouse_code' => $movement->warehouse?->code,
                     'warehouse_name' => $movement->warehouse?->name,
                     'work_order_id' => $movement->workOrder?->id,
                     'wo_number' => $movement->workOrder?->wo_number,
+                    'tool_loan_id' => $movement->tool_loan_id,
+                    'borrower_name' => $movement->toolLoan?->borrower_name,
                     'movement_type' => $movement->movement_type,
                     'quantity_change' => (float) $movement->quantity_change,
                     'notes' => $movement->notes,
@@ -261,10 +271,44 @@ class PartController extends Controller
                 ];
             });
 
+        $activeToolLoans = ToolLoan::query()
+            ->with(['part:id,part_number,name', 'warehouse:id,code,name'])
+            ->where('status', ToolLoan::STATUS_BORROWED)
+            ->latest('borrowed_at')
+            ->get()
+            ->map(function (ToolLoan $loan): array {
+                $remainingQuantity = max(0, (int) $loan->borrowed_quantity - (int) $loan->returned_quantity);
+
+                return [
+                    'id' => $loan->id,
+                    'part_id' => $loan->part_id,
+                    'part_number' => $loan->part?->part_number,
+                    'part_name' => $loan->part?->name,
+                    'warehouse_id' => $loan->warehouse_id,
+                    'warehouse_code' => $loan->warehouse?->code,
+                    'warehouse_name' => $loan->warehouse?->name,
+                    'borrower_name' => $loan->borrower_name,
+                    'borrowed_quantity' => (int) $loan->borrowed_quantity,
+                    'returned_quantity' => (int) $loan->returned_quantity,
+                    'remaining_quantity' => $remainingQuantity,
+                    'borrowed_at' => $loan->borrowed_at?->format('Y-m-d H:i'),
+                    'due_at' => $loan->due_at?->format('Y-m-d H:i'),
+                    'notes' => $loan->notes,
+                ];
+            });
+
+        $toolParts = Part::query()
+            ->where('inventory_type', Part::INVENTORY_TYPE_TOOL)
+            ->orderBy('name')
+            ->get(['id', 'part_number', 'name']);
+
         return Inertia::render('parts/Stock', [
             'stocks' => $stocks,
             'summary' => $stockSummary,
             'history' => $history,
+            'active_tool_loans' => $activeToolLoans,
+            'tool_parts' => $toolParts,
+            'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name']),
         ]);
     }
 }

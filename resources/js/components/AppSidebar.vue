@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import {
     BookOpen,
     FolderGit2,
@@ -25,11 +26,29 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+type AuthUser = {
+    permissions?: Record<string, boolean>;
+};
+
+type SharedPageProps = {
+    auth?: {
+        user?: AuthUser | null;
+    };
+};
+
+const page = usePage<SharedPageProps>();
+
+const hasPermission = (key: string): boolean => {
+    return Boolean(page.props.auth?.user?.permissions?.[key]);
+};
+
+const mainNavItems = computed<NavItem[]>(() => {
+const items: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+        items: undefined,
     },
     {
         title: 'Part',
@@ -76,6 +95,10 @@ const mainNavItems: NavItem[] = [
             {
                 title: 'Log MO',
                 href: '/work-orders/logs',
+            },
+            {
+                title: 'Lead Time',
+                href: '/work-orders/lead-time',
             },
             {
                 title: 'Work Center',
@@ -143,10 +166,49 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'General Setting',
-        href: '/settings/general',
+        href: '/settings',
         icon: Settings,
+        items: [
+            {
+                title: 'General Setting',
+                href: '/settings/general',
+            },
+            {
+                title: 'Payment Terms',
+                href: '/settings/general/payment-terms',
+            },
+            {
+                title: 'Role Access',
+                href: '/settings/role-access',
+            },
+        ],
     },
 ];
+
+return items.filter((item) => {
+    if (item.title === 'Dashboard') return hasPermission('menu.dashboard');
+    if (item.title === 'Part') return hasPermission('menu.parts');
+    if (item.title === 'Supplier') return hasPermission('menu.suppliers');
+    if (item.title === 'Work Order') return hasPermission('menu.work_orders');
+    if (item.title === 'Sales') return hasPermission('menu.sales');
+    if (item.title === 'Purchase') return hasPermission('menu.purchase');
+    if (item.title === 'General Setting') {
+        const childItems = item.items?.filter((child) => {
+            if (child.href === '/settings/general') return hasPermission('menu.settings.general');
+            if (child.href === '/settings/general/payment-terms') return hasPermission('menu.settings.general');
+            if (child.href === '/settings/role-access') return hasPermission('menu.settings.role_access');
+
+            return true;
+        }) ?? [];
+
+        item.items = childItems;
+
+        return childItems.length > 0;
+    }
+
+    return true;
+});
+});
 
 const footerNavItems: NavItem[] = [
     {
@@ -156,7 +218,7 @@ const footerNavItems: NavItem[] = [
     },
     {
         title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
+        href: '/documentation',
         icon: BookOpen,
     },
 ];

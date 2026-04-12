@@ -2,6 +2,8 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    role: 'staff' | 'gm' | 'director';
+    permissions?: Record<string, boolean>;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;

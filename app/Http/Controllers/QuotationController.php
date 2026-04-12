@@ -257,6 +257,34 @@ class QuotationController extends Controller
         return to_route('sales.quotations.index')->with('success', 'Quotation berhasil dihapus.');
     }
 
+    public function generateCustomerOrder(CustomerOrder $quotation): RedirectResponse
+    {
+        if ($quotation->status !== CustomerOrder::STATUS_QUOTATION) {
+            return to_route('sales.quotations.index')->with('error', 'Data bukan quotation atau sudah digenerate.');
+        }
+
+        $quotationNumber = $quotation->co_number;
+        $newCustomerOrderNumber = null;
+
+        DB::transaction(function () use ($quotation, $quotationNumber, &$newCustomerOrderNumber): void {
+            $newCustomerOrderNumber = CustomerOrder::generateNumber();
+
+            $notes = trim((string) ($quotation->notes ?? ''));
+            $generatedNote = 'Generated from quotation '.$quotationNumber;
+
+            $quotation->update([
+                'co_number' => $newCustomerOrderNumber,
+                'status' => CustomerOrder::STATUS_REGISTERED,
+                'notes' => $notes === '' ? $generatedNote : $notes.PHP_EOL.$generatedNote,
+            ]);
+        });
+
+        return to_route('sales.customer-orders.index')->with(
+            'success',
+            'Quotation '.$quotationNumber.' berhasil digenerate menjadi CO '.$newCustomerOrderNumber.'.',
+        );
+    }
+
     /**
      * @param array<string, mixed> $extra
      * @return array<string, mixed>
@@ -265,6 +293,11 @@ class QuotationController extends Controller
     {
         return array_merge([
             'defaultCurrency' => (string) AppSetting::get('default_currency_code', 'IDR'),
+            'paymentTermsOptions' => collect(json_decode((string) AppSetting::get('payment_terms_options', '[]'), true))
+                ->filter(fn ($term): bool => is_string($term) && trim($term) !== '')
+                ->map(fn ($term): string => trim((string) $term))
+                ->unique(fn (string $term): string => mb_strtolower($term))
+                ->values(),
             'currencies' => Currency::query()
                 ->where('is_active', true)
                 ->orderBy('code')

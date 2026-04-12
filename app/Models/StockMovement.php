@@ -12,6 +12,7 @@ class StockMovement extends Model
         'warehouse_id',
         'work_order_id',
         'work_order_report_id',
+        'tool_loan_id',
         'movement_type',
         'quantity_change',
         'notes',
@@ -39,5 +40,10 @@ class StockMovement extends Model
     public function workOrderReport(): BelongsTo
     {
         return $this->belongsTo(WorkOrderReport::class);
+    }
+
+    public function toolLoan(): BelongsTo
+    {
+        return $this->belongsTo(ToolLoan::class);
     }
 }
