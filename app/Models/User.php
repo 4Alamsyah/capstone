@@ -34,6 +34,8 @@ class User extends Authenticatable
 
     public const PERMISSION_MENU_PURCHASE = 'menu.purchase';
 
+    public const PERMISSION_MENU_ACCOUNTING = 'menu.accounting';
+
     public const PERMISSION_MENU_GENERAL_SETTINGS = 'menu.settings.general';
 
     public const PERMISSION_MENU_ROLE_ACCESS = 'menu.settings.role_access';
@@ -104,6 +106,7 @@ class User extends Authenticatable
             self::PERMISSION_MENU_WORK_ORDERS => true,
             self::PERMISSION_MENU_SALES => true,
             self::PERMISSION_MENU_PURCHASE => true,
+            self::PERMISSION_MENU_ACCOUNTING => true,
             self::PERMISSION_MENU_GENERAL_SETTINGS => true,
             self::PERMISSION_MENU_ROLE_ACCESS => false,
             self::PERMISSION_APPROVE_PURCHASE_ORDER => false,
@@ -147,6 +150,7 @@ class User extends Authenticatable
             self::PERMISSION_MENU_WORK_ORDERS => 'View Work Order menu',
             self::PERMISSION_MENU_SALES => 'View Sales menu',
             self::PERMISSION_MENU_PURCHASE => 'View Purchase menu',
+            self::PERMISSION_MENU_ACCOUNTING => 'View Accounting menu',
             self::PERMISSION_MENU_GENERAL_SETTINGS => 'View General Setting menu',
             self::PERMISSION_MENU_ROLE_ACCESS => 'View Role Access setting menu',
             self::PERMISSION_APPROVE_PURCHASE_ORDER => 'Can approve/reject Purchase Order',

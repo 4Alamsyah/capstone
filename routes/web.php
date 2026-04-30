@@ -5,6 +5,11 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Accounting\AccountingAuditTrailController;
+use App\Http\Controllers\Accounting\ChartOfAccountController;
+use App\Http\Controllers\Accounting\FiscalPeriodController;
+use App\Http\Controllers\Accounting\JournalEntryController;
+use App\Http\Controllers\Accounting\JournalLineController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -127,6 +132,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/po/{purchaseOrder}/arrivals/report', [PurchaseOrderController::class, 'submitArrival'])->name('purchase.po.arrivals.report-store');
 
         Route::get('/po/arrivals/logs', [PurchaseOrderController::class, 'logs'])->name('purchase.po.arrivals.logs');
+    });
+
+    Route::middleware('permission:menu.accounting')->group(function (): void {
+        Route::inertia('/accounting/general', 'accounting/General')->name('accounting.general');
+
+        Route::get('/accounting/chart-of-accounts', [ChartOfAccountController::class, 'index'])->name('accounting.chart-of-accounts');
+        Route::post('/accounting/chart-of-accounts', [ChartOfAccountController::class, 'store'])->name('accounting.chart-of-accounts.store');
+        Route::put('/accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'update'])->name('accounting.chart-of-accounts.update');
+        Route::delete('/accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'destroy'])->name('accounting.chart-of-accounts.destroy');
+
+        Route::get('/accounting/fiscal-periods', [FiscalPeriodController::class, 'index'])->name('accounting.fiscal-periods');
+        Route::post('/accounting/fiscal-periods', [FiscalPeriodController::class, 'store'])->name('accounting.fiscal-periods.store');
+        Route::put('/accounting/fiscal-periods/{fiscalPeriod}', [FiscalPeriodController::class, 'update'])->name('accounting.fiscal-periods.update');
+        Route::delete('/accounting/fiscal-periods/{fiscalPeriod}', [FiscalPeriodController::class, 'destroy'])->name('accounting.fiscal-periods.destroy');
+
+        Route::get('/accounting/manual-journal', [JournalEntryController::class, 'manualJournal'])->name('accounting.manual-journal');
+        Route::post('/accounting/manual-journal', [JournalEntryController::class, 'store'])->name('accounting.manual-journal.store');
+        Route::put('/accounting/manual-journal/{journalEntry}', [JournalEntryController::class, 'update'])->name('accounting.manual-journal.update');
+        Route::delete('/accounting/manual-journal/{journalEntry}', [JournalEntryController::class, 'destroy'])->name('accounting.manual-journal.destroy');
+
+        Route::get('/accounting/journal-entries', [JournalEntryController::class, 'index'])->name('accounting.journal-entries');
+        Route::get('/accounting/journal-lines', [JournalLineController::class, 'index'])->name('accounting.journal-lines');
+        Route::post('/accounting/journal-lines', [JournalLineController::class, 'store'])->name('accounting.journal-lines.store');
+        Route::put('/accounting/journal-lines/{journalLine}', [JournalLineController::class, 'update'])->name('accounting.journal-lines.update');
+        Route::delete('/accounting/journal-lines/{journalLine}', [JournalLineController::class, 'destroy'])->name('accounting.journal-lines.destroy');
+
+        Route::get('/accounting/audit-trails', [AccountingAuditTrailController::class, 'index'])->name('accounting.audit-trails');
+        Route::delete('/accounting/audit-trails/{accountingAuditTrail}', [AccountingAuditTrailController::class, 'destroy'])->name('accounting.audit-trails.destroy');
     });
 });
 

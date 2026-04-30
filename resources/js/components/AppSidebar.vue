@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import {
     BookOpen,
+    Calculator,
     FolderGit2,
     LayoutGrid,
     Package,
@@ -165,6 +166,41 @@ const items: NavItem[] = [
         ],
     },
     {
+        title: 'Accounting',
+        href: '/accounting/general',
+        icon: Calculator,
+        items: [
+            {
+                title: 'General',
+                href: '/accounting/general',
+            },
+            {
+                title: 'Manual Journal',
+                href: '/accounting/manual-journal',
+            },
+            {
+                title: 'Chart of Accounts',
+                href: '/accounting/chart-of-accounts',
+            },
+            {
+                title: 'Fiscal Periods',
+                href: '/accounting/fiscal-periods',
+            },
+            {
+                title: 'Journal Entries',
+                href: '/accounting/journal-entries',
+            },
+            {
+                title: 'Journal Lines',
+                href: '/accounting/journal-lines',
+            },
+            {
+                title: 'Audit Trails',
+                href: '/accounting/audit-trails',
+            },
+        ],
+    },
+    {
         title: 'General Setting',
         href: '/settings',
         icon: Settings,
@@ -192,6 +228,7 @@ return items.filter((item) => {
     if (item.title === 'Work Order') return hasPermission('menu.work_orders');
     if (item.title === 'Sales') return hasPermission('menu.sales');
     if (item.title === 'Purchase') return hasPermission('menu.purchase');
+    if (item.title === 'Accounting') return hasPermission('menu.accounting');
     if (item.title === 'General Setting') {
         const childItems = item.items?.filter((child) => {
             if (child.href === '/settings/general') return hasPermission('menu.settings.general');
