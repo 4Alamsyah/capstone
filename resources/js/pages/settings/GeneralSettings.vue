@@ -20,7 +20,6 @@ type CurrencyItem = {
 
 type Props = {
     settings: {
-        wo_prefix: string;
         default_currency_code: string;
     };
     currencies: CurrencyItem[];
@@ -34,7 +33,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
 ];
 
 const settingsForm = useForm({
-    wo_prefix: props.settings.wo_prefix,
     default_currency_code: props.settings.default_currency_code,
 });
 
@@ -87,21 +85,6 @@ const setDefaultCurrency = (currency: CurrencyItem) => {
 
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="grid gap-2">
-                                <Label for="wo_prefix">WO Number Prefix</Label>
-                                <Input
-                                    id="wo_prefix"
-                                    v-model="settingsForm.wo_prefix"
-                                    placeholder="e.g. WO"
-                                    class="uppercase"
-                                    maxlength="20"
-                                />
-                                <p class="text-xs text-muted-foreground">
-                                    Generated format: <strong>{{ settingsForm.wo_prefix || 'WO' }}-YYYYMM-00001</strong>
-                                </p>
-                                <InputError :message="settingsForm.errors.wo_prefix" />
-                            </div>
-
-                            <div class="grid gap-2">
                                 <Label for="default_currency_code">Default Currency</Label>
                                 <select
                                     id="default_currency_code"
@@ -113,6 +96,15 @@ const setDefaultCurrency = (currency: CurrencyItem) => {
                                     </option>
                                 </select>
                                 <InputError :message="settingsForm.errors.default_currency_code" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <div class="grid gap-2">
+                                    <p class="text-sm font-medium">Work Order Format</p>
+                                    <p class="text-xs text-muted-foreground">
+                                        WO format configuration is available in <a href="/settings/app" class="font-semibold text-blue-600 hover:underline">App Settings</a>
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

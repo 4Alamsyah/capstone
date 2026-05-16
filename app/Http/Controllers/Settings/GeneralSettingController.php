@@ -58,7 +58,6 @@ class GeneralSettingController extends Controller
 
         return Inertia::render('settings/GeneralSettings', [
             'settings' => [
-                'wo_prefix' => AppSetting::get('wo_prefix', 'WO'),
                 'default_currency_code' => $defaultCode,
             ],
             'currencies' => Currency::query()
@@ -80,14 +79,11 @@ class GeneralSettingController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'wo_prefix' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9\-_]+$/i'],
             'default_currency_code' => ['required', 'string', 'size:3', 'exists:currencies,code'],
         ]);
 
-        $woPrefix = strtoupper(trim($validated['wo_prefix']));
         $defaultCode = strtoupper(trim($validated['default_currency_code']));
 
-        AppSetting::set('wo_prefix', $woPrefix);
         AppSetting::set('default_currency_code', $defaultCode);
 
         Currency::query()->update([

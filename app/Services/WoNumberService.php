@@ -24,6 +24,25 @@ class WoNumberService
         return self::generate($format, 1);
     }
 
+    public static function stem(array $format): string
+    {
+        $parts = [];
+        $prefix = $format['prefix'] ?? 'WO';
+
+        foreach ($format['components'] as $component) {
+            if ($component['type'] === 'sequential') {
+                continue;
+            }
+
+            $value = self::formatComponent($component, 0, $prefix);
+            if ($value !== null && $value !== '') {
+                $parts[] = $value;
+            }
+        }
+
+        return \count($parts) > 0 ? implode($format['separator'] ?? '-', $parts) : '';
+    }
+
     private static function formatComponent(array $component, int $sequenceNumber, string $prefix): ?string
     {
         return match ($component['type']) {

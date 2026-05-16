@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WoNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -54,22 +55,30 @@ class WorkOrder extends Model
         return $this->hasMany(StockMovement::class)->latest();
     }
 
-    /**
-     * Generate the next WO number.
-     * Format: {PREFIX}-{YYYYMM}-{5-digit sequence for that year-month}
-     * e.g., WO-202603-00001
-     */
     public static function generateNumber(): string
     {
-        $prefix = AppSetting::get('wo_prefix', 'WO');
-        $yearMonth = now()->format('Ym'); // e.g. 202603
+        $format = json_decode(AppSetting::get('wo_format', ''), true) ?? self::defaultFormat();
+        $stem = WoNumberService::stem($format);
+        $separator = $format['separator'] ?? '-';
+        $pattern = $stem . ($stem ? $separator : '') . '%';
 
-        // Count existing WOs in this year-month with this prefix pattern
-        $pattern = "{$prefix}-{$yearMonth}-%";
         $count = static::where('wo_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return WoNumberService::generate($format, $count + 1);
+    }
+
+    private static function defaultFormat(): array
+    {
+        return [
+            'prefix' => 'WO',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
     }
 
     /**
