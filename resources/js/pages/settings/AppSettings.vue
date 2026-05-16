@@ -32,23 +32,12 @@ type Props = {
     status?: string;
 };
 
-const defaultFormat = (): Format => ({
-    prefix: 'WO',
-    separator: '-',
-    components: [
-        { type: 'prefix', format: 'raw' },
-        { type: 'year', format: 'YYYY' },
-        { type: 'month', format: 'MM' },
-        { type: 'sequential', format: '5' },
-    ],
-});
-
 const props = withDefaults(defineProps<Props>(), {
     settings: () => ({
-        wo_format: defaultFormat(),
-        po_format: { ...defaultFormat(), prefix: 'PO' },
-        co_format: { ...defaultFormat(), prefix: 'CO' },
-        quotation_format: { ...defaultFormat(), prefix: 'QT' },
+        wo_format: { prefix: 'WO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
+        po_format: { prefix: 'PO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
+        co_format: { prefix: 'CO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
+        quotation_format: { prefix: 'QT', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
     }),
 });
 
