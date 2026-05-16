@@ -11,20 +11,23 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import type { BreadcrumbItem } from '@/types';
 
-type WoComponent = {
+type Component = {
     type: 'prefix' | 'year' | 'month' | 'sequential';
     format: string;
 };
 
-type WoFormat = {
+type Format = {
     prefix: string;
     separator: string;
-    components: WoComponent[];
+    components: Component[];
 };
 
 type Props = {
     settings: {
-        wo_format: WoFormat;
+        wo_format: Format;
+        po_format: Format;
+        co_format: Format;
+        quotation_format: Format;
     };
     status?: string;
 };
@@ -37,6 +40,9 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const form = useForm({
     wo_format: props.settings.wo_format,
+    po_format: props.settings.po_format,
+    co_format: props.settings.co_format,
+    quotation_format: props.settings.quotation_format,
 });
 
 const yearFormats = ['YYYY', 'YY'];
@@ -50,7 +56,12 @@ const componentLabels: Record<string, string> = {
     sequential: 'Sequential Number',
 };
 
-const preview = computed(() => generatePreview());
+const availableComponentTypes: Array<{ type: Component['type']; label: string }> = [
+    { type: 'prefix', label: 'Prefix' },
+    { type: 'year', label: 'Year' },
+    { type: 'month', label: 'Month' },
+    { type: 'sequential', label: 'Sequential' },
+];
 
 const getComponentFormatOptions = (type: string): string[] => {
     switch (type) {
@@ -65,8 +76,8 @@ const getComponentFormatOptions = (type: string): string[] => {
     }
 };
 
-const moveComponent = (index: number, direction: 'up' | 'down') => {
-    const components = form.wo_format.components;
+const moveComponent = (format: Format, index: number, direction: 'up' | 'down') => {
+    const components = format.components;
     if (direction === 'up' && index > 0) {
         [components[index], components[index - 1]] = [components[index - 1], components[index]];
     } else if (direction === 'down' && index < components.length - 1) {
@@ -74,43 +85,36 @@ const moveComponent = (index: number, direction: 'up' | 'down') => {
     }
 };
 
-const removeComponent = (index: number) => {
-    form.wo_format.components.splice(index, 1);
+const removeComponent = (format: Format, index: number) => {
+    format.components.splice(index, 1);
 };
 
-const availableComponentTypes: Array<{ type: WoComponent['type']; label: string }> = [
-    { type: 'prefix', label: 'Prefix' },
-    { type: 'year', label: 'Year' },
-    { type: 'month', label: 'Month' },
-    { type: 'sequential', label: 'Sequential' },
-];
-
-const getAvailableComponents = () => {
-    const usedTypes = form.wo_format.components.map(c => c.type);
+const getAvailableComponents = (format: Format) => {
+    const usedTypes = format.components.map(c => c.type);
     return availableComponentTypes.filter(c => !usedTypes.includes(c.type));
 };
 
-const addComponent = (type: WoComponent['type']) => {
-    const defaults: Record<WoComponent['type'], WoComponent> = {
+const addComponent = (format: Format, type: Component['type']) => {
+    const defaults: Record<Component['type'], Component> = {
         prefix: { type: 'prefix', format: 'raw' },
         year: { type: 'year', format: 'YYYY' },
         month: { type: 'month', format: 'MM' },
         sequential: { type: 'sequential', format: '5' },
     };
-    form.wo_format.components.push(defaults[type]);
+    format.components.push(defaults[type]);
 };
 
-const generatePreview = (): string => {
+const generatePreview = (format: Format): string => {
     const parts: string[] = [];
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
 
-    for (const component of form.wo_format.components) {
+    for (const component of format.components) {
         let value = '';
 
         if (component.type === 'prefix') {
-            value = form.wo_format.prefix;
+            value = format.prefix;
         } else if (component.type === 'year') {
             value = component.format === 'YY' ? String(year).slice(-2) : String(year);
         } else if (component.type === 'month') {
@@ -125,8 +129,13 @@ const generatePreview = (): string => {
         }
     }
 
-    return parts.length > 0 ? parts.join(form.wo_format.separator) : 'WO-202605-00001';
+    return parts.length > 0 ? parts.join(format.separator) : format.prefix + format.separator + '202605' + format.separator + '00001';
 };
+
+const woPreview = computed(() => generatePreview(form.wo_format));
+const poPreview = computed(() => generatePreview(form.po_format));
+const coPreview = computed(() => generatePreview(form.co_format));
+const quotationPreview = computed(() => generatePreview(form.quotation_format));
 
 const submit = () => {
     form.patch('/settings/app');
@@ -169,12 +178,12 @@ const submit = () => {
                         <div class="mb-6">
                             <div class="mb-3 flex items-center justify-between">
                                 <Label class="block">Format Components (Order matters)</Label>
-                                <div v-if="getAvailableComponents().length > 0" class="flex gap-1">
+                                <div v-if="getAvailableComponents(form.wo_format).length > 0" class="flex gap-1">
                                     <button
-                                        v-for="comp in getAvailableComponents()"
+                                        v-for="comp in getAvailableComponents(form.wo_format)"
                                         :key="comp.type"
                                         type="button"
-                                        @click="addComponent(comp.type)"
+                                        @click="addComponent(form.wo_format, comp.type)"
                                         class="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
                                     >
                                         + {{ comp.label }}
@@ -209,7 +218,7 @@ const submit = () => {
                                         <button
                                             type="button"
                                             :disabled="index === 0"
-                                            @click="moveComponent(index, 'up')"
+                                            @click="moveComponent(form.wo_format, index, 'up')"
                                             class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
                                         >
                                             <ArrowUp class="h-4 w-4" />
@@ -217,7 +226,7 @@ const submit = () => {
                                         <button
                                             type="button"
                                             :disabled="index === form.wo_format.components.length - 1"
-                                            @click="moveComponent(index, 'down')"
+                                            @click="moveComponent(form.wo_format, index, 'down')"
                                             class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
                                         >
                                             <ArrowDown class="h-4 w-4" />
@@ -228,7 +237,7 @@ const submit = () => {
                                     <button
                                         type="button"
                                         :disabled="form.wo_format.components.length === 1"
-                                        @click="removeComponent(index)"
+                                        @click="removeComponent(form.wo_format, index)"
                                         class="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
                                     >
                                         <Trash2 class="h-4 w-4" />
@@ -240,8 +249,8 @@ const submit = () => {
 
                         <!-- Separator -->
                         <div class="mb-6 grid gap-2 max-w-xs">
-                            <Label for="separator">Separator</Label>
-                            <select v-model="form.wo_format.separator" id="separator" class="rounded-md border border-gray-300 px-3 py-2">
+                            <Label for="wo_separator">Separator</Label>
+                            <select v-model="form.wo_format.separator" id="wo_separator" class="rounded-md border border-gray-300 px-3 py-2">
                                 <option v-for="sep in separators" :key="sep" :value="sep">
                                     {{ sep === '' ? '(none)' : sep }}
                                 </option>
@@ -252,7 +261,301 @@ const submit = () => {
                         <!-- Preview -->
                         <div class="mb-4 rounded-md bg-blue-50 p-3">
                             <p class="text-xs text-blue-600">Preview:</p>
-                            <p class="font-mono text-lg font-semibold text-blue-900">{{ preview }}</p>
+                            <p class="font-mono text-lg font-semibold text-blue-900">{{ woPreview }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Order Format settings -->
+                    <div class="rounded-lg border border-sidebar-border/70 p-4">
+                        <h3 class="mb-4 text-sm font-semibold">Purchase Order Format</h3>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="po_prefix">PO Number Prefix</Label>
+                            <Input
+                                id="po_prefix"
+                                v-model="form.po_format.prefix"
+                                placeholder="e.g. PO"
+                                class="uppercase"
+                                maxlength="20"
+                            />
+                            <InputError :message="form.errors['po_format.prefix']" />
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="mb-3 flex items-center justify-between">
+                                <Label class="block">Format Components (Order matters)</Label>
+                                <div v-if="getAvailableComponents(form.po_format).length > 0" class="flex gap-1">
+                                    <button
+                                        v-for="comp in getAvailableComponents(form.po_format)"
+                                        :key="comp.type"
+                                        type="button"
+                                        @click="addComponent(form.po_format, comp.type)"
+                                        class="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                        + {{ comp.label }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(component, index) in form.po_format.components"
+                                    :key="index"
+                                    class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium">{{ componentLabels[component.type] }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            Format: <span class="font-mono">{{ component.format }}</span>
+                                        </p>
+                                    </div>
+                                    <select
+                                        v-model="component.format"
+                                        class="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    >
+                                        <option v-for="fmt in getComponentFormatOptions(component.type)" :key="fmt" :value="fmt">
+                                            {{ fmt }}
+                                        </option>
+                                    </select>
+                                    <div class="flex gap-1">
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            @click="moveComponent(form.po_format, index, 'up')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowUp class="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :disabled="index === form.po_format.components.length - 1"
+                                            @click="moveComponent(form.po_format, index, 'down')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowDown class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        :disabled="form.po_format.components.length === 1"
+                                        @click="removeComponent(form.po_format, index)"
+                                        class="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <InputError :message="form.errors['po_format.components']" />
+                        </div>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="po_separator">Separator</Label>
+                            <select v-model="form.po_format.separator" id="po_separator" class="rounded-md border border-gray-300 px-3 py-2">
+                                <option v-for="sep in separators" :key="sep" :value="sep">
+                                    {{ sep === '' ? '(none)' : sep }}
+                                </option>
+                            </select>
+                            <InputError :message="form.errors['po_format.separator']" />
+                        </div>
+
+                        <div class="mb-4 rounded-md bg-blue-50 p-3">
+                            <p class="text-xs text-blue-600">Preview:</p>
+                            <p class="font-mono text-lg font-semibold text-blue-900">{{ poPreview }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Customer Order Format settings -->
+                    <div class="rounded-lg border border-sidebar-border/70 p-4">
+                        <h3 class="mb-4 text-sm font-semibold">Customer Order Format</h3>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="co_prefix">CO Number Prefix</Label>
+                            <Input
+                                id="co_prefix"
+                                v-model="form.co_format.prefix"
+                                placeholder="e.g. CO"
+                                class="uppercase"
+                                maxlength="20"
+                            />
+                            <InputError :message="form.errors['co_format.prefix']" />
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="mb-3 flex items-center justify-between">
+                                <Label class="block">Format Components (Order matters)</Label>
+                                <div v-if="getAvailableComponents(form.co_format).length > 0" class="flex gap-1">
+                                    <button
+                                        v-for="comp in getAvailableComponents(form.co_format)"
+                                        :key="comp.type"
+                                        type="button"
+                                        @click="addComponent(form.co_format, comp.type)"
+                                        class="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                        + {{ comp.label }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(component, index) in form.co_format.components"
+                                    :key="index"
+                                    class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium">{{ componentLabels[component.type] }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            Format: <span class="font-mono">{{ component.format }}</span>
+                                        </p>
+                                    </div>
+                                    <select
+                                        v-model="component.format"
+                                        class="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    >
+                                        <option v-for="fmt in getComponentFormatOptions(component.type)" :key="fmt" :value="fmt">
+                                            {{ fmt }}
+                                        </option>
+                                    </select>
+                                    <div class="flex gap-1">
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            @click="moveComponent(form.co_format, index, 'up')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowUp class="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :disabled="index === form.co_format.components.length - 1"
+                                            @click="moveComponent(form.co_format, index, 'down')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowDown class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        :disabled="form.co_format.components.length === 1"
+                                        @click="removeComponent(form.co_format, index)"
+                                        class="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <InputError :message="form.errors['co_format.components']" />
+                        </div>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="co_separator">Separator</Label>
+                            <select v-model="form.co_format.separator" id="co_separator" class="rounded-md border border-gray-300 px-3 py-2">
+                                <option v-for="sep in separators" :key="sep" :value="sep">
+                                    {{ sep === '' ? '(none)' : sep }}
+                                </option>
+                            </select>
+                            <InputError :message="form.errors['co_format.separator']" />
+                        </div>
+
+                        <div class="mb-4 rounded-md bg-blue-50 p-3">
+                            <p class="text-xs text-blue-600">Preview:</p>
+                            <p class="font-mono text-lg font-semibold text-blue-900">{{ coPreview }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Quotation Format settings -->
+                    <div class="rounded-lg border border-sidebar-border/70 p-4">
+                        <h3 class="mb-4 text-sm font-semibold">Quotation Format</h3>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="quotation_prefix">Quotation Number Prefix</Label>
+                            <Input
+                                id="quotation_prefix"
+                                v-model="form.quotation_format.prefix"
+                                placeholder="e.g. QT"
+                                class="uppercase"
+                                maxlength="20"
+                            />
+                            <InputError :message="form.errors['quotation_format.prefix']" />
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="mb-3 flex items-center justify-between">
+                                <Label class="block">Format Components (Order matters)</Label>
+                                <div v-if="getAvailableComponents(form.quotation_format).length > 0" class="flex gap-1">
+                                    <button
+                                        v-for="comp in getAvailableComponents(form.quotation_format)"
+                                        :key="comp.type"
+                                        type="button"
+                                        @click="addComponent(form.quotation_format, comp.type)"
+                                        class="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                        + {{ comp.label }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(component, index) in form.quotation_format.components"
+                                    :key="index"
+                                    class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium">{{ componentLabels[component.type] }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            Format: <span class="font-mono">{{ component.format }}</span>
+                                        </p>
+                                    </div>
+                                    <select
+                                        v-model="component.format"
+                                        class="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    >
+                                        <option v-for="fmt in getComponentFormatOptions(component.type)" :key="fmt" :value="fmt">
+                                            {{ fmt }}
+                                        </option>
+                                    </select>
+                                    <div class="flex gap-1">
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            @click="moveComponent(form.quotation_format, index, 'up')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowUp class="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :disabled="index === form.quotation_format.components.length - 1"
+                                            @click="moveComponent(form.quotation_format, index, 'down')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowDown class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        :disabled="form.quotation_format.components.length === 1"
+                                        @click="removeComponent(form.quotation_format, index)"
+                                        class="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <InputError :message="form.errors['quotation_format.components']" />
+                        </div>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="quotation_separator">Separator</Label>
+                            <select v-model="form.quotation_format.separator" id="quotation_separator" class="rounded-md border border-gray-300 px-3 py-2">
+                                <option v-for="sep in separators" :key="sep" :value="sep">
+                                    {{ sep === '' ? '(none)' : sep }}
+                                </option>
+                            </select>
+                            <InputError :message="form.errors['quotation_format.separator']" />
+                        </div>
+
+                        <div class="mb-4 rounded-md bg-blue-50 p-3">
+                            <p class="text-xs text-blue-600">Preview:</p>
+                            <p class="font-mono text-lg font-semibold text-blue-900">{{ quotationPreview }}</p>
                         </div>
                     </div>
 

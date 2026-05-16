@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WoNumberService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,14 +70,28 @@ class PurchaseOrder extends Model
 
     public static function generateNumber(): string
     {
-        $prefix = AppSetting::get('po_prefix', 'PO');
-        $yearMonth = now()->format('Ym');
+        $format = json_decode(AppSetting::get('po_format', ''), true) ?? self::defaultFormat();
+        $stem = WoNumberService::stem($format);
+        $separator = $format['separator'] ?? '-';
+        $pattern = $stem . ($stem ? $separator : '') . '%';
 
-        $pattern = "{$prefix}-{$yearMonth}-%";
         $count = static::where('po_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return WoNumberService::generate($format, $count + 1);
+    }
+
+    private static function defaultFormat(): array
+    {
+        return [
+            'prefix' => 'PO',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
     }
 
     /**

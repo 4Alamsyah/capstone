@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WoNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -62,26 +63,54 @@ class CustomerOrder extends Model
 
     public static function generateNumber(): string
     {
-        $prefix = AppSetting::get('co_prefix', 'CO');
-        $yearMonth = now()->format('Ym');
+        $format = json_decode(AppSetting::get('co_format', ''), true) ?? self::defaultCoFormat();
+        $stem = WoNumberService::stem($format);
+        $separator = $format['separator'] ?? '-';
+        $pattern = $stem . ($stem ? $separator : '') . '%';
 
-        $pattern = "{$prefix}-{$yearMonth}-%";
         $count = static::where('co_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return WoNumberService::generate($format, $count + 1);
     }
 
     public static function generateQuotationNumber(): string
     {
-        $prefix = AppSetting::get('quotation_prefix', 'QT');
-        $yearMonth = now()->format('Ym');
+        $format = json_decode(AppSetting::get('quotation_format', ''), true) ?? self::defaultQuotationFormat();
+        $stem = WoNumberService::stem($format);
+        $separator = $format['separator'] ?? '-';
+        $pattern = $stem . ($stem ? $separator : '') . '%';
 
-        $pattern = "{$prefix}-{$yearMonth}-%";
         $count = static::where('co_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return WoNumberService::generate($format, $count + 1);
+    }
+
+    private static function defaultCoFormat(): array
+    {
+        return [
+            'prefix' => 'CO',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
+    }
+
+    private static function defaultQuotationFormat(): array
+    {
+        return [
+            'prefix' => 'QT',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
     }
 
     /**
