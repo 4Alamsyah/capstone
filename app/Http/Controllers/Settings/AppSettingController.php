@@ -13,10 +13,10 @@ class AppSettingController extends Controller
 {
     public function edit(): Response
     {
-        $woFormat = json_decode(AppSetting::get('wo_format', json_encode($this->defaultWoFormat())), true);
-        $poFormat = json_decode(AppSetting::get('po_format', json_encode($this->defaultPoFormat())), true);
-        $coFormat = json_decode(AppSetting::get('co_format', json_encode($this->defaultCoFormat())), true);
-        $quotationFormat = json_decode(AppSetting::get('quotation_format', json_encode($this->defaultQuotationFormat())), true);
+        $woFormat = json_decode(AppSetting::get('wo_format', json_encode($this->defaultWoFormat())), true) ?? $this->defaultWoFormat();
+        $poFormat = json_decode(AppSetting::get('po_format', json_encode($this->defaultPoFormat())), true) ?? $this->defaultPoFormat();
+        $coFormat = json_decode(AppSetting::get('co_format', json_encode($this->defaultCoFormat())), true) ?? $this->defaultCoFormat();
+        $quotationFormat = json_decode(AppSetting::get('quotation_format', json_encode($this->defaultQuotationFormat())), true) ?? $this->defaultQuotationFormat();
 
         return Inertia::render('settings/AppSettings', [
             'settings' => [
