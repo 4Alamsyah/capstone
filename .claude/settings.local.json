@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd e:\\\\\\\\xampp82-new\\\\\\\\htdocs\\\\\\\\capstone)",
+      "Bash(php artisan *)",
+      "Bash(curl -s http://localhost:5173)"
+    ]
+  }
+}

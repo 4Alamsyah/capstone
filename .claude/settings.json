@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:8000)",
+      "Bash(curl -s http://localhost:8000/settings/app -H \"Accept: application/json\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat\\(settings\\): add flexible WO format configuration with components builder *)"
+    ]
+  }
+}
