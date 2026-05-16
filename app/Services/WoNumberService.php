@@ -16,7 +16,12 @@ class WoNumberService
             }
         }
 
-        return count($parts) > 0 ? implode($format['separator'] ?? '-', $parts) : 'WO-' . now()->format('Ym') . '-00001';
+        if (\count($parts) > 0) {
+            return implode($format['separator'] ?? '-', $parts);
+        }
+
+        $sep = $format['separator'] ?? '-';
+        return $prefix . $sep . now()->format('Ym') . $sep . str_pad((string) $sequenceNumber, 5, '0', STR_PAD_LEFT);
     }
 
     public static function preview(array $format): string

@@ -66,7 +66,7 @@ class CustomerOrder extends Model
         $format = json_decode(AppSetting::get('co_format', ''), true) ?? self::defaultCoFormat();
         $stem = WoNumberService::stem($format);
         $separator = $format['separator'] ?? '-';
-        $pattern = $stem . ($stem ? $separator : '') . '%';
+        $pattern = ($stem ? $stem . $separator : '') . '%';
 
         $count = static::where('co_number', 'like', $pattern)->count();
 
@@ -78,7 +78,7 @@ class CustomerOrder extends Model
         $format = json_decode(AppSetting::get('quotation_format', ''), true) ?? self::defaultQuotationFormat();
         $stem = WoNumberService::stem($format);
         $separator = $format['separator'] ?? '-';
-        $pattern = $stem . ($stem ? $separator : '') . '%';
+        $pattern = ($stem ? $stem . $separator : '') . '%';
 
         $count = static::where('co_number', 'like', $pattern)->count();
 

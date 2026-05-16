@@ -73,7 +73,7 @@ class PurchaseOrder extends Model
         $format = json_decode(AppSetting::get('po_format', ''), true) ?? self::defaultFormat();
         $stem = WoNumberService::stem($format);
         $separator = $format['separator'] ?? '-';
-        $pattern = $stem . ($stem ? $separator : '') . '%';
+        $pattern = ($stem ? $stem . $separator : '') . '%';
 
         $count = static::where('po_number', 'like', $pattern)->count();
 

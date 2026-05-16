@@ -60,7 +60,7 @@ class WorkOrder extends Model
         $format = json_decode(AppSetting::get('wo_format', ''), true) ?? self::defaultFormat();
         $stem = WoNumberService::stem($format);
         $separator = $format['separator'] ?? '-';
-        $pattern = $stem . ($stem ? $separator : '') . '%';
+        $pattern = ($stem ? $stem . $separator : '') . '%';
 
         $count = static::where('wo_number', 'like', $pattern)->count();
 
