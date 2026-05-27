@@ -13,6 +13,7 @@ use App\Http\Controllers\Accounting\JournalLineController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseVoucherController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ToolLoanController;
 use App\Http\Controllers\WorkCenterController;
@@ -132,6 +133,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/po/{purchaseOrder}/arrivals/report', [PurchaseOrderController::class, 'submitArrival'])->name('purchase.po.arrivals.report-store');
 
         Route::get('/po/arrivals/logs', [PurchaseOrderController::class, 'logs'])->name('purchase.po.arrivals.logs');
+
+        // Voucher routes — order matters: specific paths before wildcard
+        Route::get('/voucher/stock-recommendations', [PurchaseVoucherController::class, 'stockRecommendations'])->name('purchase.voucher.stock-recommendations');
+        Route::post('/voucher/stock-recommendations', [PurchaseVoucherController::class, 'generateFromStock'])->name('purchase.voucher.generate-from-stock');
+        Route::get('/voucher', [PurchaseVoucherController::class, 'index'])->name('purchase.voucher.index');
+        Route::get('/voucher/create', [PurchaseVoucherController::class, 'create'])->name('purchase.voucher.create');
+        Route::post('/voucher', [PurchaseVoucherController::class, 'store'])->name('purchase.voucher.store');
+        Route::get('/voucher/{purchaseVoucher}', [PurchaseVoucherController::class, 'show'])->name('purchase.voucher.show');
+        Route::post('/voucher/{purchaseVoucher}/submit', [PurchaseVoucherController::class, 'submit'])->name('purchase.voucher.submit');
+        Route::post('/voucher/{purchaseVoucher}/approve', [PurchaseVoucherController::class, 'approve'])
+            ->middleware('permission:approve.purchase_voucher')
+            ->name('purchase.voucher.approve');
+        Route::post('/voucher/{purchaseVoucher}/reject', [PurchaseVoucherController::class, 'reject'])
+            ->middleware('permission:approve.purchase_voucher')
+            ->name('purchase.voucher.reject');
+        Route::post('/voucher/{purchaseVoucher}/convert-to-po', [PurchaseVoucherController::class, 'convertToPo'])->name('purchase.voucher.convert-to-po');
+        Route::delete('/voucher/{purchaseVoucher}', [PurchaseVoucherController::class, 'destroy'])->name('purchase.voucher.destroy');
     });
 
     Route::middleware('permission:menu.accounting')->group(function (): void {

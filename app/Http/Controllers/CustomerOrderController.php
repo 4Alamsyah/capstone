@@ -13,6 +13,8 @@ use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Part;
+use App\Models\PurchaseVoucher;
+use App\Models\PurchaseVoucherItem;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLog;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -352,9 +354,48 @@ class CustomerOrderController extends Controller
                     ],
                 ]);
             }
+
+            // Auto-create Purchase Voucher for items with insufficient stock
+            $insufficientItems = $customerOrder->items->filter(
+                fn (CustomerOrderItem $item): bool => (int) $item->stock_on_hand < (float) $item->quantity
+            );
+
+            if ($insufficientItems->isNotEmpty()) {
+                $alreadyExists = PurchaseVoucher::query()
+                    ->where('customer_order_id', $customerOrder->id)
+                    ->exists();
+
+                if (!$alreadyExists) {
+                    $pv = PurchaseVoucher::query()->create([
+                        'pv_number' => PurchaseVoucher::generateNumber(),
+                        'status' => PurchaseVoucher::STATUS_DRAFT,
+                        'source' => PurchaseVoucher::SOURCE_CO_CONFIRMATION,
+                        'customer_order_id' => $customerOrder->id,
+                        'created_by' => request()->user()?->id,
+                        'notes' => 'Auto-generated from CO '.$customerOrder->co_number,
+                    ]);
+
+                    foreach ($insufficientItems as $item) {
+                        $deficit = max(0, (float) $item->quantity - (int) $item->stock_on_hand);
+                        PurchaseVoucherItem::query()->create([
+                            'purchase_voucher_id' => $pv->id,
+                            'part_id' => $item->part_id,
+                            'quantity' => $deficit,
+                            'unit' => $item->unit,
+                            'stock_on_hand' => (int) $item->stock_on_hand,
+                            'remarks' => 'From CO item: '.($item->part?->part_number ?? ''),
+                        ]);
+                    }
+                }
+            }
         });
 
-        return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil di-confirm dan work order otomatis dibuat.');
+        $message = 'Customer order berhasil di-confirm dan work order otomatis dibuat.';
+        if (isset($pv)) {
+            $message .= ' Purchase Voucher otomatis dibuat untuk item dengan stok kurang.';
+        }
+
+        return to_route('sales.customer-orders.index')->with('success', $message);
     }
 
     public function updateStatus(UpdateCustomerOrderStatusRequest $request, CustomerOrder $customerOrder): RedirectResponse

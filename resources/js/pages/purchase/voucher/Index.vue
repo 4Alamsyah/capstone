@@ -1,0 +1,263 @@
+<script setup lang="ts">
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import Heading from '@/components/Heading.vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import AppLayout from '@/layouts/AppLayout.vue';
+import type { BreadcrumbItem } from '@/types';
+
+type PurchaseVoucherRow = {
+    id: number;
+    pv_number: string;
+    status: number;
+    source: string;
+    customer_order: { co_number: string } | null;
+    items_count: number;
+    creator: { name: string } | null;
+    created_at: string;
+};
+
+type PaginationMeta = {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
+type Props = {
+    purchaseVouchers: PurchaseVoucherRow[];
+    pagination: PaginationMeta;
+    filters: { search: string; status: string };
+    statusLabels: Record<string, string>;
+    canManageApprovals: boolean;
+};
+
+const props = defineProps<Props>();
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Purchase', href: '/purchase/po' },
+    { title: 'List Voucher', href: '/purchase/voucher' },
+];
+
+const filterForm = useForm({
+    search: props.filters.search ?? '',
+    status: props.filters.status ?? '',
+});
+
+const statusColors: Record<number, string> = {
+    1: 'bg-amber-100 text-amber-700',
+    2: 'bg-blue-100 text-blue-700',
+    3: 'bg-emerald-100 text-emerald-700',
+    4: 'bg-green-100 text-green-700',
+    8: 'bg-rose-100 text-rose-700',
+    9: 'bg-gray-100 text-gray-700',
+};
+
+const sourceLabels: Record<string, string> = {
+    manual: 'Manual',
+    co_confirmation: 'From CO',
+    stock_recommendation: 'From Stock',
+};
+
+const submitFilter = () => {
+    filterForm.get('/purchase/voucher', {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const clearFilter = () => {
+    filterForm.search = '';
+    filterForm.status = '';
+    submitFilter();
+};
+
+const submitVoucher = (pv: PurchaseVoucherRow) => {
+    useForm({}).post(`/purchase/voucher/${pv.id}/submit`, { preserveScroll: true });
+};
+
+const approveVoucher = (pv: PurchaseVoucherRow) => {
+    const notes = window.prompt('Catatan approval (opsional):') ?? '';
+    useForm({ approval_notes: notes }).post(`/purchase/voucher/${pv.id}/approve`, { preserveScroll: true });
+};
+
+const rejectVoucher = (pv: PurchaseVoucherRow) => {
+    const notes = window.prompt('Alasan reject (wajib):') ?? '';
+
+    if (notes.trim() === '') {
+        window.alert('Alasan reject wajib diisi.');
+
+        return;
+    }
+
+    useForm({ approval_notes: notes }).post(`/purchase/voucher/${pv.id}/reject`, { preserveScroll: true });
+};
+
+const deleteVoucher = (pv: PurchaseVoucherRow) => {
+    if (!window.confirm(`Hapus Voucher ${pv.pv_number}? Tindakan ini tidak bisa dibatalkan.`)) {
+        return;
+    }
+
+    useForm({}).delete(`/purchase/voucher/${pv.id}`, { preserveScroll: true });
+};
+
+const paginationText = computed(() => {
+    if (props.pagination.total === 0) {
+        return 'No purchase vouchers found';
+    }
+
+    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} vouchers`;
+});
+</script>
+
+<template>
+    <Head title="List Voucher" />
+
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <Heading title="List Voucher" description="Daftar purchase voucher pembelian barang." />
+                <div class="flex gap-2">
+                    <Button as-child variant="outline">
+                        <Link href="/purchase/voucher/stock-recommendations">Stock Rekomendasi</Link>
+                    </Button>
+                    <Button as-child>
+                        <Link href="/purchase/voucher/create">+ Register Voucher</Link>
+                    </Button>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-sidebar-border/70 p-4">
+                <!-- Filters -->
+                <div class="mb-4 flex flex-wrap items-end gap-2">
+                    <div class="grid gap-1">
+                        <span class="text-xs text-muted-foreground">Search</span>
+                        <Input v-model="filterForm.search" placeholder="PV number..." class="w-64" />
+                    </div>
+                    <div class="grid gap-1">
+                        <span class="text-xs text-muted-foreground">Status</span>
+                        <select
+                            v-model="filterForm.status"
+                            class="h-10 w-44 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="">All</option>
+                            <option v-for="(label, code) in props.statusLabels" :key="code" :value="code">{{ label }}</option>
+                        </select>
+                    </div>
+                    <Button variant="outline" @click="submitFilter">Filter</Button>
+                    <Button v-if="filterForm.search || filterForm.status" variant="ghost" @click="clearFilter">Clear</Button>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
+                                <th class="py-2 pr-3">PV Number</th>
+                                <th class="py-2 pr-3">Status</th>
+                                <th class="py-2 pr-3">Source</th>
+                                <th class="py-2 pr-3">Items</th>
+                                <th class="py-2 pr-3">Dibuat oleh</th>
+                                <th class="py-2 pr-3">Tanggal</th>
+                                <th class="py-2 pr-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="props.purchaseVouchers.length === 0">
+                                <td colspan="7" class="py-8 text-center text-muted-foreground">No purchase vouchers found.</td>
+                            </tr>
+                            <tr
+                                v-for="pv in props.purchaseVouchers"
+                                :key="pv.id"
+                                class="border-b border-sidebar-border/40 align-top last:border-0"
+                            >
+                                <td class="py-2 pr-3 font-mono font-medium">
+                                    <Link :href="`/purchase/voucher/${pv.id}`" class="text-blue-600 hover:underline">
+                                        {{ pv.pv_number }}
+                                    </Link>
+                                </td>
+                                <td class="py-2 pr-3">
+                                    <span
+                                        class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                        :class="statusColors[pv.status]"
+                                    >
+                                        {{ props.statusLabels[String(pv.status)] ?? pv.status }}
+                                    </span>
+                                </td>
+                                <td class="py-2 pr-3 text-xs text-muted-foreground">
+                                    <span class="inline-flex rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
+                                        {{ sourceLabels[pv.source] ?? pv.source }}
+                                    </span>
+                                    <span v-if="pv.customer_order" class="ml-1 text-muted-foreground">
+                                        ({{ pv.customer_order.co_number }})
+                                    </span>
+                                </td>
+                                <td class="py-2 pr-3 text-muted-foreground">{{ pv.items_count }} item(s)</td>
+                                <td class="py-2 pr-3 text-muted-foreground">{{ pv.creator?.name ?? '-' }}</td>
+                                <td class="py-2 pr-3 text-muted-foreground">{{ pv.created_at }}</td>
+                                <td class="py-2 pr-3 text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <Button size="sm" variant="outline" as-child>
+                                            <Link :href="`/purchase/voucher/${pv.id}`">Detail</Link>
+                                        </Button>
+                                        <Button
+                                            v-if="pv.status === 1"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="submitVoucher(pv)"
+                                        >
+                                            Submit
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && pv.status === 2"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="approveVoucher(pv)"
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && pv.status === 2"
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="rejectVoucher(pv)"
+                                        >
+                                            Reject
+                                        </Button>
+                                        <Button
+                                            v-if="pv.status === 1 || pv.status === 8"
+                                            size="sm"
+                                            variant="destructive"
+                                            @click="deleteVoucher(pv)"
+                                        >
+                                            Hapus
+                                        </Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+                    <span>{{ paginationText }}</span>
+                    <div class="flex gap-2">
+                        <Button v-if="props.pagination.prev_page_url" size="sm" variant="outline" as-child>
+                            <Link :href="props.pagination.prev_page_url">Prev</Link>
+                        </Button>
+                        <Button v-if="props.pagination.next_page_url" size="sm" variant="outline" as-child>
+                            <Link :href="props.pagination.next_page_url">Next</Link>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AppLayout>
+</template>

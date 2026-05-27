@@ -19,6 +19,7 @@ class PurchaseOrderItem extends Model
         'line_total',
         'received_quantity',
         'remarks',
+        'purchase_voucher_item_id',
     ];
 
     protected $casts = [
@@ -36,5 +37,10 @@ class PurchaseOrderItem extends Model
     public function part(): BelongsTo
     {
         return $this->belongsTo(Part::class);
+    }
+
+    public function purchaseVoucherItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseVoucherItem::class);
     }
 }

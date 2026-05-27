@@ -5,7 +5,11 @@
       "Bash(curl -s http://localhost:8000/settings/app -H \"Accept: application/json\")",
       "Bash(git add *)",
       "Bash(git commit -m 'feat\\(settings\\): add flexible WO format configuration with components builder *)",
-      "Bash(curl -s http://localhost:8000/settings/app)"
+      "Bash(curl -s http://localhost:8000/settings/app)",
+      "Bash(npm run *)",
+      "Read(//mnt/e/xampp82/htdocs/**)",
+      "Read(//tmp/**)",
+      "PowerShell(cd \"e:\\\\xampp82\\\\htdocs\\\\capstone\"; Start-Process npm -ArgumentList \"run\",\"dev\" -NoNewWindow -RedirectStandardOutput \"$env:TEMP\\\\dev_server.log\"; Write-Output \"Dev server started. Check http://localhost:5173 in about 5-10 seconds\")"
     ]
   }
 }

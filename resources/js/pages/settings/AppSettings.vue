@@ -28,6 +28,7 @@ type Props = {
         po_format: Format;
         co_format: Format;
         quotation_format: Format;
+        pv_format: Format;
     };
     status?: string;
 };
@@ -38,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
         po_format: { prefix: 'PO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
         co_format: { prefix: 'CO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
         quotation_format: { prefix: 'QT', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
+        pv_format: { prefix: 'PV', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
     }),
 });
 
@@ -50,6 +52,7 @@ const form = useForm({
     po_format: props.settings.po_format,
     co_format: props.settings.co_format,
     quotation_format: props.settings.quotation_format,
+    pv_format: props.settings.pv_format,
 });
 
 const yearFormats = ['YYYY', 'YY'];
@@ -143,6 +146,7 @@ const woPreview = computed(() => generatePreview(form.wo_format));
 const poPreview = computed(() => generatePreview(form.po_format));
 const coPreview = computed(() => generatePreview(form.co_format));
 const quotationPreview = computed(() => generatePreview(form.quotation_format));
+const pvPreview = computed(() => generatePreview(form.pv_format));
 
 const submit = () => {
     form.patch('/settings/app');
@@ -563,6 +567,104 @@ const submit = () => {
                         <div class="mb-4 rounded-md bg-blue-50 p-3">
                             <p class="text-xs text-blue-600">Preview:</p>
                             <p class="font-mono text-lg font-semibold text-blue-900">{{ quotationPreview }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Voucher Format settings -->
+                    <div class="rounded-lg border border-sidebar-border/70 p-4">
+                        <h3 class="mb-4 text-sm font-semibold">Purchase Voucher Format</h3>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="pv_prefix">PV Number Prefix</Label>
+                            <Input
+                                id="pv_prefix"
+                                v-model="form.pv_format.prefix"
+                                placeholder="e.g. PV"
+                                class="uppercase"
+                                maxlength="20"
+                            />
+                            <InputError :message="form.errors['pv_format.prefix']" />
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="mb-3 flex items-center justify-between">
+                                <Label class="block">Format Components (Order matters)</Label>
+                                <div v-if="getAvailableComponents(form.pv_format).length > 0" class="flex gap-1">
+                                    <button
+                                        v-for="comp in getAvailableComponents(form.pv_format)"
+                                        :key="comp.type"
+                                        type="button"
+                                        @click="addComponent(form.pv_format, comp.type)"
+                                        class="rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                        + {{ comp.label }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(component, index) in form.pv_format.components"
+                                    :key="index"
+                                    class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3"
+                                >
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium">{{ componentLabels[component.type] }}</p>
+                                        <p class="text-xs text-gray-500">
+                                            Format: <span class="font-mono">{{ component.format }}</span>
+                                        </p>
+                                    </div>
+                                    <select
+                                        v-model="component.format"
+                                        class="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    >
+                                        <option v-for="fmt in getComponentFormatOptions(component.type)" :key="fmt" :value="fmt">
+                                            {{ fmt }}
+                                        </option>
+                                    </select>
+                                    <div class="flex gap-1">
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            @click="moveComponent(form.pv_format, index, 'up')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowUp class="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :disabled="index === form.pv_format.components.length - 1"
+                                            @click="moveComponent(form.pv_format, index, 'down')"
+                                            class="rounded p-1 hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            <ArrowDown class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        :disabled="form.pv_format.components.length === 1"
+                                        @click="removeComponent(form.pv_format, index)"
+                                        class="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        <Trash2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <InputError :message="form.errors['pv_format.components']" />
+                        </div>
+
+                        <div class="mb-6 grid gap-2 max-w-xs">
+                            <Label for="pv_separator">Separator</Label>
+                            <select v-model="form.pv_format.separator" id="pv_separator" class="rounded-md border border-gray-300 px-3 py-2">
+                                <option v-for="sep in separators" :key="sep" :value="sep">
+                                    {{ sep === '' ? '(none)' : sep }}
+                                </option>
+                            </select>
+                            <InputError :message="form.errors['pv_format.separator']" />
+                        </div>
+
+                        <div class="mb-4 rounded-md bg-blue-50 p-3">
+                            <p class="text-xs text-blue-600">Preview:</p>
+                            <p class="font-mono text-lg font-semibold text-blue-900">{{ pvPreview }}</p>
                         </div>
                     </div>
 

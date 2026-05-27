@@ -17,6 +17,7 @@ class AppSettingController extends Controller
         $poFormat = json_decode(AppSetting::get('po_format', json_encode($this->defaultPoFormat())), true) ?? $this->defaultPoFormat();
         $coFormat = json_decode(AppSetting::get('co_format', json_encode($this->defaultCoFormat())), true) ?? $this->defaultCoFormat();
         $quotationFormat = json_decode(AppSetting::get('quotation_format', json_encode($this->defaultQuotationFormat())), true) ?? $this->defaultQuotationFormat();
+        $pvFormat = json_decode(AppSetting::get('pv_format', json_encode($this->defaultPvFormat())), true) ?? $this->defaultPvFormat();
 
         return Inertia::render('settings/AppSettings', [
             'settings' => [
@@ -24,6 +25,7 @@ class AppSettingController extends Controller
                 'po_format' => $poFormat,
                 'co_format' => $coFormat,
                 'quotation_format' => $quotationFormat,
+                'pv_format' => $pvFormat,
             ],
             'status' => session('status'),
         ]);
@@ -59,12 +61,20 @@ class AppSettingController extends Controller
             'quotation_format.components.*.type' => ['required', 'string', 'in:prefix,year,month,sequential'],
             'quotation_format.components.*.format' => ['required', 'string'],
             'quotation_format.separator' => ['required', 'string', 'max:5'],
+
+            'pv_format' => ['required', 'array'],
+            'pv_format.prefix' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9\-_]+$/i'],
+            'pv_format.components' => ['required', 'array', 'min:1'],
+            'pv_format.components.*.type' => ['required', 'string', 'in:prefix,year,month,sequential'],
+            'pv_format.components.*.format' => ['required', 'string'],
+            'pv_format.separator' => ['required', 'string', 'max:5'],
         ]);
 
         AppSetting::set('wo_format', json_encode($validated['wo_format']));
         AppSetting::set('po_format', json_encode($validated['po_format']));
         AppSetting::set('co_format', json_encode($validated['co_format']));
         AppSetting::set('quotation_format', json_encode($validated['quotation_format']));
+        AppSetting::set('pv_format', json_encode($validated['pv_format']));
 
         return to_route('app-settings.edit')->with('status', 'settings-updated');
     }
@@ -115,6 +125,20 @@ class AppSettingController extends Controller
     {
         return [
             'prefix' => 'QT',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
+    }
+
+    private function defaultPvFormat(): array
+    {
+        return [
+            'prefix' => 'PV',
             'separator' => '-',
             'components' => [
                 ['type' => 'prefix', 'format' => 'raw'],

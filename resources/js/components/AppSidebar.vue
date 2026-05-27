@@ -163,6 +163,18 @@ const items: NavItem[] = [
                 title: 'Log Report',
                 href: '/purchase/po/arrivals/logs',
             },
+            {
+                title: 'Register Voucher',
+                href: '/purchase/voucher/create',
+            },
+            {
+                title: 'List Voucher',
+                href: '/purchase/voucher',
+            },
+            {
+                title: 'Stock Rekomendasi',
+                href: '/purchase/voucher/stock-recommendations',
+            },
         ],
     },
     {
