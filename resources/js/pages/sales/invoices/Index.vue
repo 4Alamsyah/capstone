@@ -83,6 +83,10 @@ const paymentStatusColors: Record<number, string> = {
     3: 'bg-rose-100 text-rose-700',
 };
 
+const isEditable = (invoice: InvoiceItem): boolean => {
+    return invoice.status !== 3 && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3);
+};
+
 const requestPaymentApproval = (invoice: InvoiceItem) => {
     const notes = window.prompt('Catatan pengajuan payment (opsional):', invoice.payment_approval_notes ?? '') ?? '';
 
@@ -223,6 +227,14 @@ const paginationText = computed(() => {
                                     <div class="flex justify-end gap-2">
                                         <Button size="sm" variant="outline" as-child>
                                             <a :href="`/sales/invoices/${invoice.id}/document`" target="_blank" rel="noopener">Download Invoice PDF</a>
+                                        </Button>
+                                        <Button
+                                            v-if="isEditable(invoice)"
+                                            size="sm"
+                                            variant="outline"
+                                            as-child
+                                        >
+                                            <Link :href="`/sales/invoices/${invoice.id}/edit`">Edit</Link>
                                         </Button>
                                         <Button
                                             v-if="invoice.status !== 3 && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3)"

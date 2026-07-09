@@ -80,6 +80,16 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         Riwayat aktivitas untuk memantau perubahan data accounting.
                     </p>
                 </Link>
+
+                <Link
+                    href="/accounting/tax-setting"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">Tax Setting</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        Atur persentase pajak yang otomatis dipakai di Sales Invoice.
+                    </p>
+                </Link>
             </div>
         </div>
     </AppLayout>

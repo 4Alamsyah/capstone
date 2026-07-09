@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { MoreHorizontal } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
@@ -110,6 +110,10 @@ const clearSearch = () => {
     searchForm.delivery_from = '';
     searchForm.delivery_to = '';
     submitSearch();
+};
+
+const editOrder = (order: OrderItem) => {
+    router.visit(`/sales/customer-orders/${order.id}/edit`);
 };
 
 const confirmOrder = (order: OrderItem) => {
@@ -307,6 +311,10 @@ const paginationText = computed(() => {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" class="w-48">
+                                            <DropdownMenuItem v-if="order.status === 1" @select.prevent="editOrder(order)">
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator v-if="order.status === 1" />
                                             <DropdownMenuLabel>Status Actions</DropdownMenuLabel>
                                             <DropdownMenuItem v-if="order.status === 1" @select.prevent="confirmOrder(order)">
                                                 Confirm

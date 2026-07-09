@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CustomerOrder\StoreCustomerOrderRequest;
+use App\Http\Requests\CustomerOrder\UpdateCustomerOrderRequest;
 use App\Http\Requests\CustomerOrder\UpdateCustomerOrderStatusRequest;
 use App\Models\AppSetting;
 use App\Models\Bom;
@@ -187,6 +188,76 @@ class CustomerOrderController extends Controller
         ]);
     }
 
+    public function edit(CustomerOrder $customerOrder): Response|RedirectResponse
+    {
+        if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
+            return to_route('sales.customer-orders.index')
+                ->with('error', 'Order hanya bisa diedit selama status masih Registered.');
+        }
+
+        $customerOrder->loadMissing(['items.part']);
+
+        return Inertia::render('sales/customer-orders/Edit', [
+            'order' => [
+                'id' => $customerOrder->id,
+                'co_number' => $customerOrder->co_number,
+                'customer_id' => $customerOrder->customer_id,
+                'order_date' => $customerOrder->order_date?->format('Y-m-d'),
+                'delivery_date' => $customerOrder->delivery_date?->format('Y-m-d'),
+                'shipping_address' => $customerOrder->shipping_address,
+                'payment_terms' => $customerOrder->payment_terms,
+                'project_code' => $customerOrder->project_code,
+                'delivery_type' => $customerOrder->delivery_type,
+                'po_number' => $customerOrder->po_number,
+                'currency_code' => $customerOrder->currency_code,
+                'notes' => $customerOrder->notes,
+                'lines' => $customerOrder->items->map(fn (CustomerOrderItem $item): array => [
+                    'part_id' => $item->part_id,
+                    'quantity' => (string) $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => (string) $item->unit_price,
+                    'remarks' => $item->remarks,
+                ])->values(),
+            ],
+            'defaultCurrency' => (string) AppSetting::get('default_currency_code', 'IDR'),
+            'paymentTermsOptions' => collect(json_decode((string) AppSetting::get('payment_terms_options', '[]'), true))
+                ->filter(fn ($term): bool => is_string($term) && trim($term) !== '')
+                ->map(fn ($term): string => trim((string) $term))
+                ->unique(fn (string $term): string => mb_strtolower($term))
+                ->values(),
+            'currencies' => Currency::query()
+                ->where('is_active', true)
+                ->orderBy('code')
+                ->get(['code', 'name'])
+                ->map(fn (Currency $currency): array => [
+                    'code' => $currency->code,
+                    'name' => $currency->name,
+                ])
+                ->values(),
+            'customers' => Customer::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'shipping_address', 'payment_terms', 'currency_code'])
+                ->map(fn (Customer $customer): array => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'shipping_address' => $customer->shipping_address,
+                    'payment_terms' => $customer->payment_terms,
+                    'currency_code' => $customer->currency_code,
+                ]),
+            'parts' => Part::query()
+                ->withSum('stocks as total_stock', 'quantity')
+                ->orderBy('part_number')
+                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->map(fn (Part $part): array => [
+                    'id' => $part->id,
+                    'part_number' => $part->part_number,
+                    'name' => $part->name,
+                    'selling_price' => (float) $part->selling_price,
+                    'stock_on_hand' => (int) ($part->total_stock ?? 0),
+                ]),
+        ]);
+    }
+
     public function store(StoreCustomerOrderRequest $request): RedirectResponse
     {
         $validated = $request->validated();
@@ -261,6 +332,85 @@ class CustomerOrderController extends Controller
         });
 
         return to_route('sales.customer-orders.index');
+    }
+
+    public function update(UpdateCustomerOrderRequest $request, CustomerOrder $customerOrder): RedirectResponse
+    {
+        if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
+            return to_route('sales.customer-orders.index')
+                ->with('error', 'Order hanya bisa diedit selama status masih Registered.');
+        }
+
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($validated, $customerOrder): void {
+            $partIds = collect($validated['lines'])->pluck('part_id')->all();
+
+            $parts = Part::query()
+                ->whereIn('id', $partIds)
+                ->withSum('stocks as total_stock', 'quantity')
+                ->get(['id', 'selling_price'])
+                ->keyBy('id');
+
+            $customerOrder->update([
+                'customer_id' => $validated['customer_id'],
+                'order_date' => $validated['order_date'],
+                'delivery_date' => $validated['delivery_date'] ?? null,
+                'shipping_address' => $validated['shipping_address'] ?? null,
+                'payment_terms' => $validated['payment_terms'] ?? null,
+                'project_code' => $validated['project_code'] ?? null,
+                'delivery_type' => $validated['delivery_type'] ?? null,
+                'po_number' => $validated['po_number'] ?? null,
+                'currency_code' => strtoupper((string) ($validated['currency_code'] ?? AppSetting::get('default_currency_code', 'IDR'))),
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            $customerOrder->items()->delete();
+
+            $subtotal = 0.0;
+            $needMo = false;
+            $allocatedByPart = [];
+
+            foreach ($validated['lines'] as $line) {
+                $part = $parts->get($line['part_id']);
+
+                if (! $part instanceof Part) {
+                    continue;
+                }
+
+                $quantity = (float) $line['quantity'];
+                $unitPrice = (float) $line['unit_price'];
+                $lineTotal = $quantity * $unitPrice;
+
+                $stockOnHand = (int) ($part->total_stock ?? 0);
+                $alreadyAllocated = (float) ($allocatedByPart[$part->id] ?? 0.0);
+                $remainingStock = max(0.0, (float) $stockOnHand - $alreadyAllocated);
+                $requiresMo = $remainingStock < $quantity;
+
+                $allocatedByPart[$part->id] = $alreadyAllocated + $quantity;
+                $subtotal += $lineTotal;
+                $needMo = $needMo || $requiresMo;
+
+                CustomerOrderItem::query()->create([
+                    'customer_order_id' => $customerOrder->id,
+                    'part_id' => $part->id,
+                    'quantity' => $quantity,
+                    'unit' => strtoupper((string) ($line['unit'] ?? 'PCS')),
+                    'unit_price' => $unitPrice,
+                    'line_total' => $lineTotal,
+                    'remarks' => $line['remarks'] ?? null,
+                    'stock_on_hand' => (int) $remainingStock,
+                    'requires_mo' => $requiresMo,
+                ]);
+            }
+
+            $customerOrder->update([
+                'subtotal' => $subtotal,
+                'needs_mo_suggestion' => $needMo,
+            ]);
+        });
+
+        return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil diperbarui.');
     }
 
     public function confirm(CustomerOrder $customerOrder): RedirectResponse
@@ -437,7 +587,7 @@ class CustomerOrderController extends Controller
                 'customer_order_id' => $customerOrder->id,
                 'status' => Invoice::STATUS_DRAFT,
                 'invoice_date' => $customerOrder->delivery_date ?? now()->toDateString(),
-                'due_date' => null,
+                'due_date' => $customerOrder->delivery_date,
                 'currency_code' => strtoupper((string) ($customerOrder->currency_code ?: AppSetting::get('default_currency_code', 'IDR'))),
                 'subtotal' => 0,
                 'tax_amount' => 0,
@@ -467,10 +617,12 @@ class CustomerOrderController extends Controller
                 ]);
             }
 
+            $taxAmount = round($subtotal * (float) AppSetting::get('tax_rate', 0) / 100, 2);
+
             $invoice->update([
                 'subtotal' => $subtotal,
-                'tax_amount' => 0,
-                'total_amount' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'total_amount' => $subtotal + $taxAmount,
             ]);
 
             $generatedInvoiceNumber = $invoice->invoice_number;

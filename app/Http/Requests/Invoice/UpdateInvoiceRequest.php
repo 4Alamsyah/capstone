@@ -5,7 +5,7 @@ namespace App\Http\Requests\Invoice;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreInvoiceRequest extends FormRequest
+class UpdateInvoiceRequest extends FormRequest
 {
     public function authorize(): bool
     {

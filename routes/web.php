@@ -10,6 +10,7 @@ use App\Http\Controllers\Accounting\ChartOfAccountController;
 use App\Http\Controllers\Accounting\FiscalPeriodController;
 use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\JournalLineController;
+use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -90,6 +91,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/customer-orders', [CustomerOrderController::class, 'index'])->name('sales.customer-orders.index');
         Route::get('/customer-orders/create', [CustomerOrderController::class, 'create'])->name('sales.customer-orders.create');
         Route::post('/customer-orders', [CustomerOrderController::class, 'store'])->name('sales.customer-orders.store');
+        Route::get('/customer-orders/{customerOrder}/edit', [CustomerOrderController::class, 'edit'])->name('sales.customer-orders.edit');
+        Route::put('/customer-orders/{customerOrder}', [CustomerOrderController::class, 'update'])->name('sales.customer-orders.update');
         Route::post('/customer-orders/{customerOrder}/confirm', [CustomerOrderController::class, 'confirm'])->name('sales.customer-orders.confirm');
         Route::patch('/customer-orders/{customerOrder}/status', [CustomerOrderController::class, 'updateStatus'])->name('sales.customer-orders.status');
         Route::post('/customer-orders/{customerOrder}/undo-report', [CustomerOrderController::class, 'undoReport'])->name('sales.customer-orders.undo-report');
@@ -106,6 +109,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/invoices', [InvoiceController::class, 'index'])->name('sales.invoices.index');
         Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('sales.invoices.create');
         Route::post('/invoices', [InvoiceController::class, 'store'])->name('sales.invoices.store');
+        Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('sales.invoices.edit');
+        Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('sales.invoices.update');
         Route::post('/invoices/{invoice}/payment-request', [InvoiceController::class, 'requestPayment'])->name('sales.invoices.payment-request');
         Route::post('/invoices/{invoice}/payment-approve', [InvoiceController::class, 'approvePayment'])
             ->middleware('permission:approve.invoice_payment')
@@ -178,6 +183,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/accounting/audit-trails', [AccountingAuditTrailController::class, 'index'])->name('accounting.audit-trails');
         Route::delete('/accounting/audit-trails/{accountingAuditTrail}', [AccountingAuditTrailController::class, 'destroy'])->name('accounting.audit-trails.destroy');
+
+        Route::get('/accounting/tax-setting', [TaxSettingController::class, 'edit'])->name('accounting.tax-setting.edit');
+        Route::patch('/accounting/tax-setting', [TaxSettingController::class, 'update'])->name('accounting.tax-setting.update');
     });
 });
 

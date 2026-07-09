@@ -41,8 +41,27 @@ type CurrencyOption = {
     name: string;
 };
 
+type InvoiceLine = {
+    part_id: number | null;
+    description: string | null;
+    quantity: string;
+    unit_price: string;
+};
+
+type InvoiceData = {
+    id: number;
+    invoice_number: string;
+    customer_id: number;
+    customer_order_id: number | null;
+    invoice_date: string | null;
+    due_date: string | null;
+    currency_code: string;
+    notes: string | null;
+    lines: InvoiceLine[];
+};
+
 type Props = {
-    nextInvoiceNumber: string;
+    invoice: InvoiceData;
     customers: CustomerOption[];
     orders: OrderOption[];
     parts: PartOption[];
@@ -56,26 +75,31 @@ const props = defineProps<Props>();
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Sales', href: '/sales/customer-orders' },
     { title: 'Invoice List', href: '/sales/invoices' },
-    { title: 'Register Invoice', href: '/sales/invoices/create' },
+    { title: `Edit ${props.invoice.invoice_number}`, href: `/sales/invoices/${props.invoice.id}/edit` },
 ];
 
-const today = new Date().toISOString().slice(0, 10);
-
 const form = useForm({
-    customer_id: '' as unknown as number,
-    customer_order_id: '' as unknown as number,
-    invoice_date: today,
-    due_date: '',
-    currency_code: '',
-    notes: '',
-    lines: [
-        {
-            part_id: '' as unknown as number,
-            description: '',
-            quantity: '1',
-            unit_price: '0',
-        },
-    ],
+    customer_id: props.invoice.customer_id as unknown as number,
+    customer_order_id: (props.invoice.customer_order_id ?? '') as unknown as number,
+    invoice_date: props.invoice.invoice_date ?? '',
+    due_date: props.invoice.due_date ?? '',
+    currency_code: props.invoice.currency_code ?? '',
+    notes: props.invoice.notes ?? '',
+    lines: props.invoice.lines.length
+        ? props.invoice.lines.map((line) => ({
+              part_id: (line.part_id ?? '') as unknown as number,
+              description: line.description ?? '',
+              quantity: line.quantity,
+              unit_price: line.unit_price,
+          }))
+        : [
+              {
+                  part_id: '' as unknown as number,
+                  description: '',
+                  quantity: '1',
+                  unit_price: '0',
+              },
+          ],
 });
 
 const selectedCustomer = computed(() => {
@@ -167,17 +191,17 @@ const grandTotal = computed(() => {
 });
 
 const submit = () => {
-    form.post('/sales/invoices');
+    form.put(`/sales/invoices/${props.invoice.id}`);
 };
 </script>
 
 <template>
-    <Head title="Register Invoice" />
+    <Head :title="`Edit ${invoice.invoice_number}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <Heading title="Register Invoice" description="Buat invoice baru untuk customer berdasarkan transaksi sales." />
+                <Heading title="Edit Invoice" description="Invoice ini masih bisa diedit karena payment belum diajukan." />
                 <Button variant="outline" as-child>
                     <Link href="/sales/invoices">Back to List</Link>
                 </Button>
@@ -185,8 +209,8 @@ const submit = () => {
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
                 <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">Invoice Number (auto)</span>
-                    <span class="font-mono text-sm font-semibold">{{ props.nextInvoiceNumber }}</span>
+                    <span class="text-xs text-muted-foreground">Invoice Number</span>
+                    <span class="font-mono text-sm font-semibold">{{ invoice.invoice_number }}</span>
                 </div>
 
                 <form class="space-y-5" @submit.prevent="submit">
@@ -348,7 +372,7 @@ const submit = () => {
                         <Button type="button" variant="outline" as-child>
                             <Link href="/sales/invoices">Cancel</Link>
                         </Button>
-                        <Button type="submit" :disabled="form.processing">Save Invoice</Button>
+                        <Button type="submit" :disabled="form.processing">Save Changes</Button>
                     </div>
                 </form>
             </div>

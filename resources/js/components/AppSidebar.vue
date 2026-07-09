@@ -210,6 +210,10 @@ const items: NavItem[] = [
                 title: 'Audit Trails',
                 href: '/accounting/audit-trails',
             },
+            {
+                title: 'Tax Setting',
+                href: '/accounting/tax-setting',
+            },
         ],
     },
     {
