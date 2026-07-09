@@ -20,6 +20,8 @@ type InvoiceItem = {
     subtotal: string;
     tax_amount: string;
     total_amount: string;
+    amount_paid: string;
+    balance_due: string;
     customer: {
         id: number | null;
         name: string | null;
@@ -73,6 +75,7 @@ const statusColors: Record<number, string> = {
     1: 'bg-gray-100 text-gray-700',
     2: 'bg-blue-100 text-blue-700',
     3: 'bg-green-100 text-green-700',
+    4: 'bg-cyan-100 text-cyan-700',
     9: 'bg-red-100 text-red-700',
 };
 
@@ -84,7 +87,22 @@ const paymentStatusColors: Record<number, string> = {
 };
 
 const isEditable = (invoice: InvoiceItem): boolean => {
-    return invoice.status !== 3 && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3);
+    return invoice.status === 1;
+};
+
+const canRequestPayment = (invoice: InvoiceItem): boolean => {
+    return (invoice.status === 2 || invoice.status === 4)
+        && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3);
+};
+
+const sendInvoice = (invoice: InvoiceItem) => {
+    if (!window.confirm(`Kirim invoice ${invoice.invoice_number}? AR akan tercatat di jurnal dan invoice terkunci dari edit.`)) {
+        return;
+    }
+
+    useForm({}).post(`/sales/invoices/${invoice.id}/send`, {
+        preserveScroll: true,
+    });
 };
 
 const requestPaymentApproval = (invoice: InvoiceItem) => {
@@ -186,6 +204,7 @@ const paginationText = computed(() => {
                                 <th class="py-2 pr-3">Invoice Date</th>
                                 <th class="py-2 pr-3">Due Date</th>
                                 <th class="py-2 pr-3">Total</th>
+                                <th class="py-2 pr-3">Balance Due</th>
                                 <th class="py-2 pr-3">Status</th>
                                 <th class="py-2 pr-3">Payment Approval</th>
                                 <th class="py-2 pr-3">Items</th>
@@ -194,7 +213,7 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="props.invoices.length === 0">
-                                <td colspan="10" class="py-8 text-center text-muted-foreground">No invoices found.</td>
+                                <td colspan="11" class="py-8 text-center text-muted-foreground">No invoices found.</td>
                             </tr>
                             <tr v-for="invoice in props.invoices" :key="invoice.id" class="border-b border-sidebar-border/40 align-top last:border-0">
                                 <td class="py-2 pr-3 font-mono font-medium">{{ invoice.invoice_number }}</td>
@@ -203,6 +222,12 @@ const paginationText = computed(() => {
                                 <td class="py-2 pr-3">{{ invoice.invoice_date ?? '-' }}</td>
                                 <td class="py-2 pr-3">{{ invoice.due_date ?? '-' }}</td>
                                 <td class="py-2 pr-3 font-semibold">{{ Number(invoice.total_amount).toLocaleString() }} {{ invoice.currency_code }}</td>
+                                <td class="py-2 pr-3">
+                                    <div class="font-mono">{{ Number(invoice.balance_due).toLocaleString() }} {{ invoice.currency_code }}</div>
+                                    <div v-if="Number(invoice.amount_paid) > 0" class="text-xs text-muted-foreground">
+                                        Paid: {{ Number(invoice.amount_paid).toLocaleString() }}
+                                    </div>
+                                </td>
                                 <td class="py-2 pr-3">
                                     <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="statusColors[invoice.status]">
                                         {{ props.statusLabels[String(invoice.status)] ?? invoice.status }}
@@ -237,7 +262,15 @@ const paginationText = computed(() => {
                                             <Link :href="`/sales/invoices/${invoice.id}/edit`">Edit</Link>
                                         </Button>
                                         <Button
-                                            v-if="invoice.status !== 3 && (invoice.payment_approval_status === 0 || invoice.payment_approval_status === 3)"
+                                            v-if="invoice.status === 1"
+                                            size="sm"
+                                            variant="outline"
+                                            @click="sendInvoice(invoice)"
+                                        >
+                                            Send Invoice
+                                        </Button>
+                                        <Button
+                                            v-if="canRequestPayment(invoice)"
                                             size="sm"
                                             variant="outline"
                                             @click="requestPaymentApproval(invoice)"
@@ -259,6 +292,13 @@ const paginationText = computed(() => {
                                             @click="rejectPayment(invoice)"
                                         >
                                             Reject Payment
+                                        </Button>
+                                        <Button
+                                            v-if="props.canManageApprovals && invoice.payment_approval_status === 2"
+                                            size="sm"
+                                            as-child
+                                        >
+                                            <Link :href="`/sales/invoices/${invoice.id}/record-payment`">Record Payment</Link>
                                         </Button>
                                     </div>
                                 </td>

@@ -35,4 +35,16 @@ class JournalEntry extends Model
     {
         return $this->hasMany(JournalLine::class);
     }
+
+    public static function generateEntryNumber(): string
+    {
+        $prefix = AppSetting::get('journal_entry_prefix', 'JE');
+        $yearMonth = now()->format('Ym');
+
+        $pattern = "{$prefix}-{$yearMonth}-%";
+        $count = static::where('entry_number', 'like', $pattern)->count();
+        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
+
+        return "{$prefix}-{$yearMonth}-{$seq}";
+    }
 }

@@ -9,6 +9,8 @@ use App\Http\Controllers\Accounting\AccountingAuditTrailController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
 use App\Http\Controllers\Accounting\FiscalPeriodController;
 use App\Http\Controllers\Accounting\JournalEntryController;
+use App\Http\Controllers\Accounting\ArAgingController;
+use App\Http\Controllers\Accounting\GlSettingController;
 use App\Http\Controllers\Accounting\JournalLineController;
 use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\InvoiceController;
@@ -111,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/invoices', [InvoiceController::class, 'store'])->name('sales.invoices.store');
         Route::get('/invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('sales.invoices.edit');
         Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('sales.invoices.update');
+        Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('sales.invoices.send');
         Route::post('/invoices/{invoice}/payment-request', [InvoiceController::class, 'requestPayment'])->name('sales.invoices.payment-request');
         Route::post('/invoices/{invoice}/payment-approve', [InvoiceController::class, 'approvePayment'])
             ->middleware('permission:approve.invoice_payment')
@@ -118,6 +121,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/invoices/{invoice}/payment-reject', [InvoiceController::class, 'rejectPayment'])
             ->middleware('permission:approve.invoice_payment')
             ->name('sales.invoices.payment-reject');
+        Route::get('/invoices/{invoice}/record-payment', [InvoiceController::class, 'newPayment'])
+            ->middleware('permission:approve.invoice_payment')
+            ->name('sales.invoices.record-payment.form');
+        Route::post('/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])
+            ->middleware('permission:approve.invoice_payment')
+            ->name('sales.invoices.record-payment.store');
         Route::get('/invoices/{invoice}/document', [InvoiceController::class, 'document'])->name('sales.invoices.document');
     });
 
@@ -186,6 +195,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/accounting/tax-setting', [TaxSettingController::class, 'edit'])->name('accounting.tax-setting.edit');
         Route::patch('/accounting/tax-setting', [TaxSettingController::class, 'update'])->name('accounting.tax-setting.update');
+
+        Route::get('/accounting/gl-setting', [GlSettingController::class, 'edit'])->name('accounting.gl-setting.edit');
+        Route::patch('/accounting/gl-setting', [GlSettingController::class, 'update'])->name('accounting.gl-setting.update');
+
+        Route::get('/accounting/ar-aging', [ArAgingController::class, 'index'])->name('accounting.ar-aging');
     });
 });
 

@@ -90,6 +90,26 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         Atur persentase pajak yang otomatis dipakai di Sales Invoice.
                     </p>
                 </Link>
+
+                <Link
+                    href="/accounting/gl-setting"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">GL Setting</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        Pemetaan Chart of Account untuk auto-posting jurnal AR.
+                    </p>
+                </Link>
+
+                <Link
+                    href="/accounting/ar-aging"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">AR Aging</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        Laporan umur piutang customer yang belum lunas.
+                    </p>
+                </Link>
             </div>
         </div>
     </AppLayout>

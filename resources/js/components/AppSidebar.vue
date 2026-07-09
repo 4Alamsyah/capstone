@@ -214,6 +214,14 @@ const items: NavItem[] = [
                 title: 'Tax Setting',
                 href: '/accounting/tax-setting',
             },
+            {
+                title: 'GL Setting',
+                href: '/accounting/gl-setting',
+            },
+            {
+                title: 'AR Aging',
+                href: '/accounting/ar-aging',
+            },
         ],
     },
     {

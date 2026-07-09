@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Invoice\RecordInvoicePaymentRequest;
 use App\Http\Requests\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\Invoice\UpdateInvoiceRequest;
 use App\Models\AppSetting;
@@ -9,10 +10,15 @@ use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderItem;
 use App\Models\Currency;
+use App\Models\FiscalPeriod;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\JournalEntry;
+use App\Models\JournalLine;
 use App\Models\Part;
+use App\Models\Payment;
 use App\Models\User;
+use App\Support\AccountingAuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +37,7 @@ class InvoiceController extends Controller
 
         $invoices = Invoice::query()
             ->with(['customer:id,name', 'customerOrder:id,co_number', 'items.part:id,part_number,name'])
+            ->withSum('payments as amount_paid', 'amount')
             ->when($search !== '', function ($builder) use ($search): void {
                 $builder->where(function ($inner) use ($search): void {
                     $inner->where('invoice_number', 'like', "%{$search}%")
@@ -50,37 +57,43 @@ class InvoiceController extends Controller
             ->withQueryString();
 
         return Inertia::render('sales/invoices/Index', [
-            'invoices' => collect($invoices->items())->map(fn (Invoice $invoice): array => [
-                'id' => $invoice->id,
-                'invoice_number' => $invoice->invoice_number,
-                'invoice_date' => $invoice->invoice_date?->format('Y-m-d'),
-                'due_date' => $invoice->due_date?->format('Y-m-d'),
-                'status' => $invoice->status,
-                'payment_approval_status' => $invoice->payment_approval_status,
-                'payment_approval_notes' => $invoice->payment_approval_notes,
-                'paid_at' => $invoice->paid_at?->format('Y-m-d H:i'),
-                'currency_code' => $invoice->currency_code,
-                'subtotal' => (string) $invoice->subtotal,
-                'tax_amount' => (string) $invoice->tax_amount,
-                'total_amount' => (string) $invoice->total_amount,
-                'customer' => [
-                    'id' => $invoice->customer?->id,
-                    'name' => $invoice->customer?->name,
-                ],
-                'customer_order' => [
-                    'id' => $invoice->customerOrder?->id,
-                    'co_number' => $invoice->customerOrder?->co_number,
-                ],
-                'items' => $invoice->items->map(fn (InvoiceItem $item): array => [
-                    'id' => $item->id,
-                    'part_number' => $item->part?->part_number,
-                    'part_name' => $item->part?->name,
-                    'description' => $item->description,
-                    'quantity' => (string) $item->quantity,
-                    'unit_price' => (string) $item->unit_price,
-                    'line_total' => (string) $item->line_total,
-                ])->values(),
-            ])->values(),
+            'invoices' => collect($invoices->items())->map(function (Invoice $invoice): array {
+                $amountPaid = (float) ($invoice->amount_paid ?? 0);
+
+                return [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'invoice_date' => $invoice->invoice_date?->format('Y-m-d'),
+                    'due_date' => $invoice->due_date?->format('Y-m-d'),
+                    'status' => $invoice->status,
+                    'payment_approval_status' => $invoice->payment_approval_status,
+                    'payment_approval_notes' => $invoice->payment_approval_notes,
+                    'paid_at' => $invoice->paid_at?->format('Y-m-d H:i'),
+                    'currency_code' => $invoice->currency_code,
+                    'subtotal' => (string) $invoice->subtotal,
+                    'tax_amount' => (string) $invoice->tax_amount,
+                    'total_amount' => (string) $invoice->total_amount,
+                    'amount_paid' => (string) $amountPaid,
+                    'balance_due' => (string) ((float) $invoice->total_amount - $amountPaid),
+                    'customer' => [
+                        'id' => $invoice->customer?->id,
+                        'name' => $invoice->customer?->name,
+                    ],
+                    'customer_order' => [
+                        'id' => $invoice->customerOrder?->id,
+                        'co_number' => $invoice->customerOrder?->co_number,
+                    ],
+                    'items' => $invoice->items->map(fn (InvoiceItem $item): array => [
+                        'id' => $item->id,
+                        'part_number' => $item->part?->part_number,
+                        'part_name' => $item->part?->name,
+                        'description' => $item->description,
+                        'quantity' => (string) $item->quantity,
+                        'unit_price' => (string) $item->unit_price,
+                        'line_total' => (string) $item->line_total,
+                    ])->values(),
+                ];
+            })->values(),
             'filters' => [
                 'search' => $search,
                 'status' => $status > 0 ? (string) $status : '',
@@ -356,13 +369,38 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Send the invoice: locks it from further edits and posts the AR/Revenue
+     * billing entry to the General Ledger (DR AR, CR Revenue + Tax Payable).
+     */
+    public function send(Invoice $invoice): RedirectResponse
+    {
+        if ($invoice->status !== Invoice::STATUS_DRAFT) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice hanya bisa dikirim dari status Draft.',
+            ]);
+        }
+
+        DB::transaction(function () use ($invoice): void {
+            $this->postInvoiceBillingToGl($invoice);
+
+            $invoice->update([
+                'status' => Invoice::STATUS_SENT,
+            ]);
+
+            AccountingAuditLogger::record('Invoice sent / AR posted', $invoice, $invoice->invoice_number);
+        });
+
+        return back()->with('success', 'Invoice berhasil dikirim dan AR sudah tercatat di jurnal.');
+    }
+
+    /**
      * Submit payment request that requires management approval.
      */
     public function requestPayment(Request $request, Invoice $invoice): RedirectResponse
     {
-        if ($invoice->status === Invoice::STATUS_PAID) {
+        if (! in_array($invoice->status, [Invoice::STATUS_SENT, Invoice::STATUS_PARTIALLY_PAID], true)) {
             throw ValidationException::withMessages([
-                'invoice' => 'Invoice sudah berstatus paid.',
+                'invoice' => 'Invoice harus dikirim (Sent) dulu sebelum payment bisa diajukan.',
             ]);
         }
 
@@ -391,7 +429,8 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Approve payment request and mark invoice as paid.
+     * Approve payment request. This only authorizes recording a payment via
+     * recordPayment() — it does not itself move money or touch the GL.
      */
     public function approvePayment(Request $request, Invoice $invoice): RedirectResponse
     {
@@ -408,17 +447,98 @@ class InvoiceController extends Controller
         ]);
 
         $invoice->update([
-            'status' => Invoice::STATUS_PAID,
             'payment_approval_status' => Invoice::PAYMENT_APPROVAL_APPROVED,
             'payment_approved_by' => $request->user()?->id,
             'payment_approved_at' => now(),
             'payment_rejected_by' => null,
             'payment_rejected_at' => null,
             'payment_approval_notes' => $validated['payment_approval_notes'] ?? $invoice->payment_approval_notes,
-            'paid_at' => now(),
         ]);
 
-        return back()->with('success', 'Payment berhasil di-approve oleh manajemen.');
+        return back()->with('success', 'Payment approval disetujui. Silakan Record Payment untuk mencatat pembayarannya.');
+    }
+
+    /**
+     * Show the Record Payment form for an approved invoice.
+     */
+    public function newPayment(Invoice $invoice): Response|RedirectResponse
+    {
+        if ($invoice->payment_approval_status !== Invoice::PAYMENT_APPROVAL_APPROVED) {
+            return to_route('sales.invoices.index')
+                ->with('error', 'Payment harus di-approve dulu sebelum bisa dicatat.');
+        }
+
+        $amountPaid = (float) $invoice->payments()->sum('amount');
+
+        return Inertia::render('sales/invoices/RecordPayment', [
+            'invoice' => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'currency_code' => $invoice->currency_code,
+                'total_amount' => (string) $invoice->total_amount,
+                'amount_paid' => (string) $amountPaid,
+                'balance_due' => (string) ((float) $invoice->total_amount - $amountPaid),
+            ],
+            'paymentMethods' => Payment::methodLabels(),
+        ]);
+    }
+
+    /**
+     * Record an actual (possibly partial) payment against the invoice and
+     * post the Cash/Bank vs AR settlement entry to the General Ledger.
+     */
+    public function recordPayment(RecordInvoicePaymentRequest $request, Invoice $invoice): RedirectResponse
+    {
+        if ($invoice->payment_approval_status !== Invoice::PAYMENT_APPROVAL_APPROVED) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Payment harus di-approve dulu sebelum bisa dicatat.',
+            ]);
+        }
+
+        if (! in_array($invoice->status, [Invoice::STATUS_SENT, Invoice::STATUS_PARTIALLY_PAID], true)) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice tidak dalam status yang bisa menerima pembayaran.',
+            ]);
+        }
+
+        $validated = $request->validated();
+        $amountPaidSoFar = (float) $invoice->payments()->sum('amount');
+        $balanceDue = (float) $invoice->total_amount - $amountPaidSoFar;
+
+        if ((float) $validated['amount'] > $balanceDue + 0.01) {
+            throw ValidationException::withMessages([
+                'amount' => 'Jumlah pembayaran melebihi sisa tagihan (' . $balanceDue . ').',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated, $invoice, $amountPaidSoFar): void {
+            $payment = Payment::query()->create([
+                'payment_number' => Payment::generateNumber(),
+                'payable_type' => Invoice::class,
+                'payable_id' => $invoice->id,
+                'amount' => $validated['amount'],
+                'payment_date' => $validated['payment_date'],
+                'payment_method' => $validated['payment_method'],
+                'reference_number' => $validated['reference_number'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'recorded_by' => auth()->id(),
+            ]);
+
+            $this->postPaymentToGl($payment, $invoice);
+
+            $newAmountPaid = $amountPaidSoFar + (float) $validated['amount'];
+            $isFullyPaid = $newAmountPaid >= (float) $invoice->total_amount - 0.01;
+
+            $invoice->update([
+                'status' => $isFullyPaid ? Invoice::STATUS_PAID : Invoice::STATUS_PARTIALLY_PAID,
+                'payment_approval_status' => Invoice::PAYMENT_APPROVAL_NOT_REQUESTED,
+                'paid_at' => $isFullyPaid ? now() : null,
+            ]);
+
+            AccountingAuditLogger::record('Invoice payment recorded', $invoice, $payment->payment_number);
+        });
+
+        return to_route('sales.invoices.index')->with('success', 'Pembayaran berhasil dicatat.');
     }
 
     /**
@@ -474,18 +594,128 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Invoice can only be edited before payment is requested/approved.
+     * Post the AR billing entry when an invoice is sent: DR Accounts Receivable,
+     * CR Sales Revenue (+ CR Sales Tax Payable if tax_amount > 0).
+     */
+    private function postInvoiceBillingToGl(Invoice $invoice): void
+    {
+        $fiscalPeriod = FiscalPeriod::findOpenPeriodForDate((string) $invoice->invoice_date->format('Y-m-d'));
+
+        if (! $fiscalPeriod) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Tidak ada Fiscal Period terbuka untuk tanggal invoice ini. Buka dulu di Accounting > Fiscal Periods.',
+            ]);
+        }
+
+        $arAccountId = (int) AppSetting::get('gl_ar_account_id');
+        $revenueAccountId = (int) AppSetting::get('gl_sales_revenue_account_id');
+        $taxPayableAccountId = (int) AppSetting::get('gl_sales_tax_payable_account_id');
+
+        if (! $arAccountId || ! $revenueAccountId) {
+            throw ValidationException::withMessages([
+                'invoice' => 'GL Account Mapping belum diatur. Buka dulu di Accounting > GL Setting.',
+            ]);
+        }
+
+        $entry = JournalEntry::query()->create([
+            'fiscal_period_id' => $fiscalPeriod->id,
+            'entry_number' => JournalEntry::generateEntryNumber(),
+            'entry_date' => $invoice->invoice_date,
+            'description' => 'AR billing: Invoice ' . $invoice->invoice_number,
+            'status' => 'posted',
+            'posted_at' => now(),
+        ]);
+
+        JournalLine::query()->create([
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $arAccountId,
+            'line_type' => 'debit',
+            'amount' => $invoice->total_amount,
+            'description' => 'Invoice ' . $invoice->invoice_number,
+        ]);
+
+        JournalLine::query()->create([
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $revenueAccountId,
+            'line_type' => 'credit',
+            'amount' => $invoice->subtotal,
+            'description' => 'Invoice ' . $invoice->invoice_number,
+        ]);
+
+        if ((float) $invoice->tax_amount > 0) {
+            if (! $taxPayableAccountId) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'GL Account Mapping untuk Sales Tax Payable belum diatur.',
+                ]);
+            }
+
+            JournalLine::query()->create([
+                'journal_entry_id' => $entry->id,
+                'chart_of_account_id' => $taxPayableAccountId,
+                'line_type' => 'credit',
+                'amount' => $invoice->tax_amount,
+                'description' => 'Invoice ' . $invoice->invoice_number . ' (tax)',
+            ]);
+        }
+    }
+
+    /**
+     * Post the settlement entry when a payment is recorded: DR Cash/Bank, CR Accounts Receivable.
+     */
+    private function postPaymentToGl(Payment $payment, Invoice $invoice): void
+    {
+        $fiscalPeriod = FiscalPeriod::findOpenPeriodForDate((string) $payment->payment_date->format('Y-m-d'));
+
+        if (! $fiscalPeriod) {
+            throw ValidationException::withMessages([
+                'amount' => 'Tidak ada Fiscal Period terbuka untuk tanggal pembayaran ini. Buka dulu di Accounting > Fiscal Periods.',
+            ]);
+        }
+
+        $cashAccountId = (int) AppSetting::get('gl_cash_bank_account_id');
+        $arAccountId = (int) AppSetting::get('gl_ar_account_id');
+
+        if (! $cashAccountId || ! $arAccountId) {
+            throw ValidationException::withMessages([
+                'amount' => 'GL Account Mapping belum diatur. Buka dulu di Accounting > GL Setting.',
+            ]);
+        }
+
+        $entry = JournalEntry::query()->create([
+            'fiscal_period_id' => $fiscalPeriod->id,
+            'entry_number' => JournalEntry::generateEntryNumber(),
+            'entry_date' => $payment->payment_date,
+            'description' => 'AR settlement: ' . $payment->payment_number . ' for Invoice ' . $invoice->invoice_number,
+            'status' => 'posted',
+            'posted_at' => now(),
+        ]);
+
+        JournalLine::query()->create([
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $cashAccountId,
+            'line_type' => 'debit',
+            'amount' => $payment->amount,
+            'description' => $payment->payment_number,
+        ]);
+
+        JournalLine::query()->create([
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $arAccountId,
+            'line_type' => 'credit',
+            'amount' => $payment->amount,
+            'description' => $payment->payment_number,
+        ]);
+
+        $payment->update(['journal_entry_id' => $entry->id]);
+    }
+
+    /**
+     * Invoice can only be edited while still Draft — once sent, the AR/Revenue
+     * journal entry is posted with these amounts and must not drift from them.
      */
     private function isEditable(Invoice $invoice): bool
     {
-        if ($invoice->status === Invoice::STATUS_PAID) {
-            return false;
-        }
-
-        return in_array($invoice->payment_approval_status, [
-            Invoice::PAYMENT_APPROVAL_NOT_REQUESTED,
-            Invoice::PAYMENT_APPROVAL_REJECTED,
-        ], true);
+        return $invoice->status === Invoice::STATUS_DRAFT;
     }
 
     /**

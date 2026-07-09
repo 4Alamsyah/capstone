@@ -27,4 +27,13 @@ class FiscalPeriod extends Model
     {
         return $this->hasMany(JournalEntry::class);
     }
+
+    public static function findOpenPeriodForDate(string $date): ?self
+    {
+        return static::query()
+            ->where('status', 'open')
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->first();
+    }
 }

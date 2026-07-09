@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Invoice extends Model
 {
@@ -16,6 +17,8 @@ class Invoice extends Model
     public const STATUS_SENT = 2;
 
     public const STATUS_PAID = 3;
+
+    public const STATUS_PARTIALLY_PAID = 4;
 
     public const STATUS_CANCELLED = 9;
 
@@ -83,6 +86,11 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
+    public function payments(): MorphMany
+    {
+        return $this->morphMany(Payment::class, 'payable');
+    }
+
     public static function generateNumber(): string
     {
         $prefix = AppSetting::get('invoice_prefix', 'INV');
@@ -103,6 +111,7 @@ class Invoice extends Model
         return [
             self::STATUS_DRAFT => 'Draft',
             self::STATUS_SENT => 'Sent',
+            self::STATUS_PARTIALLY_PAID => 'Partially Paid',
             self::STATUS_PAID => 'Paid',
             self::STATUS_CANCELLED => 'Cancelled',
         ];
