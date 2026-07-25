@@ -65,7 +65,7 @@ class RoleAccessController extends Controller
         $normalizedPermissions = User::permissionsTemplateForRole((string) $validated['role']);
 
         foreach ($allowedKeys as $key) {
-            $normalizedPermissions[$key] = (bool) data_get($validated['permissions'], $key, false);
+            $normalizedPermissions[$key] = (bool) ($validated['permissions'][$key] ?? false);
         }
 
         $user->update([
