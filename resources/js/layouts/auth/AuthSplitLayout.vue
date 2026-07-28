@@ -19,7 +19,9 @@ defineProps<{
         <div
             class="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r"
         >
-            <div class="absolute inset-0 bg-zinc-900" />
+            <div
+                class="absolute inset-0 bg-gradient-to-br from-[hsl(205_35%_12%)] via-[hsl(205_38%_16%)] to-[hsl(178_60%_18%)]"
+            />
             <Link
                 :href="home()"
                 class="relative z-20 flex items-center text-lg font-medium"

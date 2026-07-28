@@ -1,10 +1,15 @@
+<script setup lang="ts">
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
+</script>
+
 <template>
-    <div class="flex items-center gap-2">
-        <img src="/logo.png" alt="Logo" class="h-8 w-8 object-contain" />
-        <div class="ml-1 grid flex-1 text-left text-sm">
-            <span class="mb-0.5 truncate leading-tight font-semibold"
-                >Skatra ERP</span
-            >
-        </div>
+    <AppLogoIcon class="size-8" />
+    <div class="grid flex-1 text-left leading-tight">
+        <span class="truncate text-sm font-semibold tracking-tight">
+            Skatra
+        </span>
+        <span class="truncate text-[11px] font-medium text-primary">
+            ERP System
+        </span>
     </div>
 </template>
