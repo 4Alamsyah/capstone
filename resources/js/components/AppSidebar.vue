@@ -186,10 +186,10 @@ const items: NavItem[] = [
                 title: 'General',
                 href: '/accounting/general',
             },
-            {
-                title: 'Manual Journal',
-                href: '/accounting/manual-journal',
-            },
+            // {
+            //     title: 'Manual Journal',
+            //     href: '/accounting/manual-journal',
+            // },
             {
                 title: 'Chart of Accounts',
                 href: '/accounting/chart-of-accounts',
