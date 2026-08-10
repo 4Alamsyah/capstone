@@ -62,6 +62,14 @@ const selectedSuppliers = computed(() => {
     return props.suppliers.filter((supplier) => selectedSupplierIds.value.includes(supplier.id));
 });
 
+const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 2,
+    }).format(value || 0);
+};
+
 const isSupplierRequired = computed(() => form.category === 'purchase');
 
 const syncSuppliersSelection = (supplierIds: number[]) => {
@@ -224,6 +232,7 @@ const submit = () => {
                     <div class="grid gap-2">
                         <Label for="selling_price">Selling Price</Label>
                         <Input id="selling_price" v-model.number="form.selling_price" type="number" min="0" step="0.01" />
+                        <p class="text-sm text-muted-foreground">{{ formatCurrency(form.selling_price) }}</p>
                         <InputError :message="form.errors.selling_price" />
                     </div>
 
@@ -284,6 +293,9 @@ const submit = () => {
                                     updateSupplierPrice(supplier.id, Number($event))
                                 "
                             />
+                            <p class="text-sm text-muted-foreground">
+                                {{ formatCurrency(form.suppliers.find((row) => row.supplier_id === supplier.id)?.purchase_price ?? 0) }}
+                            </p>
                             <InputError :message="getSupplierErrorBySupplierId(supplier.id)" />
                         </div>
                     </div>
