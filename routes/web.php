@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/bom', [BomController::class, 'index'])->name('bom.index');
         Route::get('/bom/create', [BomController::class, 'create'])->name('bom.create');
         Route::post('/bom', [BomController::class, 'store'])->name('bom.store');
+        Route::get('/bom/tree/{part}', [BomController::class, 'tree'])->name('bom.tree');
         Route::get('/bom/{bom}', [BomController::class, 'show'])->name('bom.show');
         Route::put('/bom/{bom}', [BomController::class, 'update'])->name('bom.update');
         Route::delete('/bom/{bom}', [BomController::class, 'destroy'])->name('bom.destroy');

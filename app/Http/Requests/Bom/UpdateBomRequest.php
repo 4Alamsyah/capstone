@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Bom;
 
+use App\Models\Bom;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBomRequest extends FormRequest
 {
@@ -21,6 +23,7 @@ class UpdateBomRequest extends FormRequest
             'name'              => ['required', 'string', 'max:255'],
             'description'       => ['nullable', 'string', 'max:1000'],
             'is_active'         => ['boolean'],
+            'planning_strategy' => ['required', Rule::in([Bom::PLANNING_STRATEGY_ORDER_ORIENTED, Bom::PLANNING_STRATEGY_STOCK_DRIVEN])],
             'items'             => ['nullable', 'array'],
             'items.*.line_type'          => ['required_with:items', 'in:part,operation'],
             'items.*.component_part_id'  => ['nullable', 'integer', 'exists:parts,id'],

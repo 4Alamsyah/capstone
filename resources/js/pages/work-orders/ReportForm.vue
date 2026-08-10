@@ -1,29 +1,18 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ComponentReportNode, {
+    type ComponentInput,
+    type ComponentRequirement,
+    type WarehouseOption,
+} from '@/components/work-orders/ComponentReportNode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
-
-type StockOption = {
-    warehouse_id: number;
-    warehouse_code: string | null;
-    warehouse_name: string | null;
-    quantity: number;
-};
-
-type ComponentRequirement = {
-    bom_item_id: number;
-    part_id: number;
-    part_number: string;
-    part_name: string;
-    bom_quantity: string;
-    recommended_quantity: number;
-    stocks: StockOption[];
-};
 
 type RecentReport = {
     id: number;
@@ -53,6 +42,7 @@ type Props = {
         };
     };
     components: ComponentRequirement[];
+    warehouses: WarehouseOption[];
     recentReports: RecentReport[];
     statusLabels: Record<string, string>;
 };
@@ -64,18 +54,37 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: props.workOrder.wo_number, href: `/work-orders/${props.workOrder.id}/report` },
 ];
 
+const seedComponents = (nodes: ComponentRequirement[], acc: Record<number, ComponentInput>) => {
+    nodes.forEach((node) => {
+        acc[node.bom_item_id] = node.is_sub_assembly
+            ? {
+                  warehouse_id: null,
+                  quantity: '0',
+                  good_quantity: node.recommended_quantity > 0 ? String(node.recommended_quantity) : '0',
+                  reject_quantity: '0',
+              }
+            : {
+                  warehouse_id: node.stocks[0]?.warehouse_id ?? null,
+                  quantity: node.recommended_quantity > 0 ? String(node.recommended_quantity) : '0',
+                  good_quantity: '0',
+                  reject_quantity: '0',
+              };
+        seedComponents(node.children, acc);
+    });
+};
+
+const initialComponents: Record<number, ComponentInput> = {};
+seedComponents(props.components, initialComponents);
+
 const form = useForm({
     new_status: props.workOrder.status,
     good_quantity: props.workOrder.quantity,
     reject_quantity: '0',
     notes: '',
-    consumptions: props.components.map((component) => ({
-        bom_item_id: component.bom_item_id,
-        part_id: component.part_id,
-        warehouse_id: component.stocks[0]?.warehouse_id ?? null,
-        quantity: component.recommended_quantity > 0 ? String(component.recommended_quantity) : '0',
-    })),
+    components: initialComponents,
 });
+
+const formErrors = computed(() => form.errors as unknown as Partial<Record<string, string>>);
 
 const submit = () => {
     form.post(`/work-orders/${props.workOrder.id}/report`);
@@ -153,7 +162,8 @@ const submit = () => {
                         <div>
                             <h4 class="text-sm font-semibold">Material Consumption</h4>
                             <p class="mt-1 text-xs text-muted-foreground">
-                                Isi warehouse dan qty konsumsi untuk tiap komponen yang benar-benar dipakai pada MO ini.
+                                Isi warehouse dan qty konsumsi untuk tiap komponen. Kalau komponen adalah sub-assembly (punya BOM sendiri),
+                                isi Good/Reject Quantity untuk memproduksinya juga dalam MO ini — komponennya sendiri ikut di-cascade di bawahnya.
                             </p>
                         </div>
 
@@ -161,34 +171,15 @@ const submit = () => {
                             BOM ini tidak memiliki komponen part untuk dikonsumsi.
                         </div>
 
-                        <div v-for="(component, index) in components" :key="component.bom_item_id" class="grid gap-3 rounded-md border border-sidebar-border/50 p-3 lg:grid-cols-[1.2fr_1fr_140px]">
-                            <div>
-                                <div class="font-medium">{{ component.part_number }} - {{ component.part_name }}</div>
-                                <div class="mt-1 text-xs text-muted-foreground">
-                                    Qty per BOM: {{ component.bom_quantity }} | Recommended: {{ component.recommended_quantity }}
-                                </div>
-                            </div>
-
-                            <div class="grid gap-1">
-                                <Label :for="`warehouse-${component.bom_item_id}`">Warehouse</Label>
-                                <select
-                                    :id="`warehouse-${component.bom_item_id}`"
-                                    v-model="form.consumptions[index].warehouse_id"
-                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option :value="null">- pilih warehouse -</option>
-                                    <option v-for="stock in component.stocks" :key="stock.warehouse_id" :value="stock.warehouse_id">
-                                        {{ stock.warehouse_code }} - {{ stock.warehouse_name }} (stok: {{ stock.quantity }})
-                                    </option>
-                                </select>
-                                <InputError :message="form.errors[`consumptions.${index}.warehouse_id` as keyof typeof form.errors]" />
-                            </div>
-
-                            <div class="grid gap-1">
-                                <Label :for="`qty-${component.bom_item_id}`">Consumed Qty</Label>
-                                <Input :id="`qty-${component.bom_item_id}`" v-model="form.consumptions[index].quantity" type="number" min="0" step="1" />
-                                <InputError :message="form.errors[`consumptions.${index}.quantity` as keyof typeof form.errors]" />
-                            </div>
+                        <div v-else class="space-y-3">
+                            <ComponentReportNode
+                                v-for="node in components"
+                                :key="node.bom_item_id"
+                                :node="node"
+                                :inputs="form.components"
+                                :warehouses="warehouses"
+                                :errors="formErrors"
+                            />
                         </div>
                     </div>
 

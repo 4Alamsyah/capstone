@@ -33,6 +33,11 @@ class WorkOrderReport extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function productions(): HasMany
+    {
+        return $this->hasMany(WorkOrderReportProduction::class);
+    }
+
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');

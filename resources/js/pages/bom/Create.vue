@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
+import BomHierarchy, { type BomTreeNode } from '@/components/bom/BomHierarchy.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ type PartOption = {
     id: number;
     part_number: string;
     name: string;
+    has_bom: boolean;
 };
 
 type WorkCenterOption = {
@@ -47,6 +49,7 @@ const form = useForm({
     name: '',
     description: '',
     is_active: true,
+    planning_strategy: 'order_oriented' as 'order_oriented' | 'stock_driven',
     items: [] as LineItem[],
 });
 
@@ -62,6 +65,36 @@ const addItem = (type: 'part' | 'operation') => {
 
 const removeItem = (index: number) => {
     form.items.splice(index, 1);
+    delete bomTrees[index];
+    delete bomTreeLoading[index];
+};
+
+// ── Sub-assembly hierarchy preview ──────────────────────────────────────────
+const bomTrees = reactive<Record<number, BomTreeNode | null>>({});
+const bomTreeLoading = reactive<Record<number, boolean>>({});
+
+const fetchBomTree = async (index: number, partId: number | null) => {
+    delete bomTrees[index];
+
+    if (!partId) {
+        return;
+    }
+
+    const part = props.parts.find((p) => p.id === partId);
+
+    if (!part?.has_bom) {
+        return;
+    }
+
+    bomTreeLoading[index] = true;
+
+    try {
+        const response = await fetch(`/bom/tree/${partId}`, { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        bomTrees[index] = data.tree;
+    } finally {
+        bomTreeLoading[index] = false;
+    }
 };
 
 const totalPartItems = computed(() => form.items.filter((i) => i.line_type === 'part').length);
@@ -129,6 +162,19 @@ const submit = () => {
                             <input id="is_active" v-model="form.is_active" type="checkbox" class="h-4 w-4 rounded border-input" />
                             <Label for="is_active" class="cursor-pointer">Active</Label>
                         </div>
+
+                        <div class="grid gap-2 sm:col-span-2">
+                            <Label for="planning_strategy">Planning Strategy</Label>
+                            <select
+                                id="planning_strategy"
+                                v-model="form.planning_strategy"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="order_oriented">Order Oriented — diproduksi inline saat WO di-report</option>
+                                <option value="stock_driven">Stock Driven — konsumsi dari stock, auto-replenish kalau kurang</option>
+                            </select>
+                            <InputError :message="form.errors.planning_strategy" />
+                        </div>
                     </div>
                 </div>
 
@@ -156,61 +202,68 @@ const submit = () => {
                         <div
                             v-for="(item, idx) in form.items"
                             :key="idx"
-                            class="grid items-start gap-3 rounded-md border border-sidebar-border/50 p-3 sm:grid-cols-[auto_1fr_120px_1fr_auto]"
+                            class="rounded-md border border-sidebar-border/50 p-3"
                         >
-                            <!-- Type badge -->
-                            <div class="flex items-center pt-1">
-                                <span
-                                    class="inline-flex rounded px-2 py-0.5 text-xs font-semibold"
-                                    :class="item.line_type === 'part' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
-                                >
-                                    {{ item.line_type === 'part' ? 'Part' : 'Operation' }}
-                                </span>
+                            <div class="grid items-start gap-3 sm:grid-cols-[auto_1fr_120px_1fr_auto]">
+                                <!-- Type badge -->
+                                <div class="flex items-center pt-1">
+                                    <span
+                                        class="inline-flex rounded px-2 py-0.5 text-xs font-semibold"
+                                        :class="item.line_type === 'part' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'"
+                                    >
+                                        {{ item.line_type === 'part' ? 'Part' : 'Operation' }}
+                                    </span>
+                                </div>
+
+                                <!-- Component select -->
+                                <div class="grid gap-1">
+                                    <Label class="text-xs">{{ item.line_type === 'part' ? 'Component Part' : 'Work Center' }}</Label>
+                                    <select
+                                        v-if="item.line_type === 'part'"
+                                        v-model="item.component_part_id"
+                                        class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        @change="fetchBomTree(idx, item.component_part_id)"
+                                    >
+                                        <option :value="null">— pilih part —</option>
+                                        <option v-for="p in parts" :key="p.id" :value="p.id">
+                                            {{ p.part_number }} – {{ p.name }}{{ p.has_bom ? ' (sub-assembly)' : '' }}
+                                        </option>
+                                    </select>
+                                    <select
+                                        v-else
+                                        v-model="item.work_center_id"
+                                        class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    >
+                                        <option :value="null">— pilih work center —</option>
+                                        <option v-for="wc in workCenters" :key="wc.id" :value="wc.id">
+                                            {{ wc.name }}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Quantity -->
+                                <div class="grid gap-1">
+                                    <Label class="text-xs">Qty</Label>
+                                    <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" />
+                                </div>
+
+                                <!-- Notes -->
+                                <div class="grid gap-1">
+                                    <Label class="text-xs">Notes</Label>
+                                    <Input v-model="item.notes" placeholder="opsional" />
+                                </div>
+
+                                <!-- Remove -->
+                                <div class="flex items-center pt-5">
+                                    <Button type="button" size="sm" variant="ghost" class="text-destructive hover:text-destructive" @click="removeItem(idx)">
+                                        ✕
+                                    </Button>
+                                </div>
                             </div>
 
-                            <!-- Component select -->
-                            <div class="grid gap-1">
-                                <Label class="text-xs">{{ item.line_type === 'part' ? 'Component Part' : 'Work Center' }}</Label>
-                                <select
-                                    v-if="item.line_type === 'part'"
-                                    v-model="item.component_part_id"
-                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option :value="null">— pilih part —</option>
-                                    <option v-for="p in parts" :key="p.id" :value="p.id">
-                                        {{ p.part_number }} – {{ p.name }}
-                                    </option>
-                                </select>
-                                <select
-                                    v-else
-                                    v-model="item.work_center_id"
-                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                >
-                                    <option :value="null">— pilih work center —</option>
-                                    <option v-for="wc in workCenters" :key="wc.id" :value="wc.id">
-                                        {{ wc.name }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <!-- Quantity -->
-                            <div class="grid gap-1">
-                                <Label class="text-xs">Qty</Label>
-                                <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" />
-                            </div>
-
-                            <!-- Notes -->
-                            <div class="grid gap-1">
-                                <Label class="text-xs">Notes</Label>
-                                <Input v-model="item.notes" placeholder="opsional" />
-                            </div>
-
-                            <!-- Remove -->
-                            <div class="flex items-center pt-5">
-                                <Button type="button" size="sm" variant="ghost" class="text-destructive hover:text-destructive" @click="removeItem(idx)">
-                                    ✕
-                                </Button>
-                            </div>
+                            <!-- Sub-assembly hierarchy preview -->
+                            <div v-if="bomTreeLoading[idx]" class="mt-2 text-xs text-muted-foreground">Memuat hirarki BOM…</div>
+                            <BomHierarchy v-else-if="bomTrees[idx]" :tree="bomTrees[idx]!" class="mt-2" />
                         </div>
                     </div>
 

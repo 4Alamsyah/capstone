@@ -72,4 +72,20 @@ class Part extends Model
     {
         return $this->hasMany(ToolLoan::class);
     }
+
+    /**
+     * BOMs that produce this part (i.e. this part is a sub-assembly).
+     */
+    public function boms(): HasMany
+    {
+        return $this->hasMany(Bom::class);
+    }
+
+    /**
+     * The active BOM used to manufacture this part, if it's a sub-assembly.
+     */
+    public function activeBom(): ?Bom
+    {
+        return $this->boms()->where('is_active', true)->latest()->first();
+    }
 }

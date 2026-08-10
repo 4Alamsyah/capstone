@@ -11,6 +11,10 @@ class Bom extends Model
 {
     use HasFactory;
 
+    public const PLANNING_STRATEGY_ORDER_ORIENTED = 'order_oriented';
+
+    public const PLANNING_STRATEGY_STOCK_DRIVEN = 'stock_driven';
+
     /**
      * @var list<string>
      */
@@ -19,6 +23,7 @@ class Bom extends Model
         'name',
         'description',
         'is_active',
+        'planning_strategy',
     ];
 
     /**
@@ -36,5 +41,10 @@ class Bom extends Model
     public function items(): HasMany
     {
         return $this->hasMany(BomItem::class)->orderBy('sort_order');
+    }
+
+    public function workOrders(): HasMany
+    {
+        return $this->hasMany(WorkOrder::class);
     }
 }

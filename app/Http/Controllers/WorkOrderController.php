@@ -10,11 +10,14 @@ use App\Models\BomItem;
 use App\Models\Part;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLog;
 use App\Models\WorkOrderReport;
+use App\Models\WorkOrderReportProduction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -295,29 +298,7 @@ class WorkOrderController extends Controller
             'reports.reporter',
         ]);
 
-        $componentRequirements = $workOrder->bom->items
-            ->filter(fn (BomItem $item): bool => $item->line_type === 'part' && $item->componentPart !== null)
-            ->map(function (BomItem $item) use ($workOrder): array {
-                $recommendedQuantity = (int) max(0, round((float) $workOrder->quantity * (float) $item->quantity));
-
-                return [
-                    'bom_item_id' => $item->id,
-                    'part_id' => $item->componentPart->id,
-                    'part_number' => $item->componentPart->part_number,
-                    'part_name' => $item->componentPart->name,
-                    'bom_quantity' => (string) $item->quantity,
-                    'recommended_quantity' => $recommendedQuantity,
-                    'stocks' => $item->componentPart->stocks
-                        ->map(fn (Stock $stock): array => [
-                            'warehouse_id' => $stock->warehouse_id,
-                            'warehouse_code' => $stock->warehouse?->code,
-                            'warehouse_name' => $stock->warehouse?->name,
-                            'quantity' => (int) $stock->quantity,
-                        ])
-                        ->values(),
-                ];
-            })
-            ->values();
+        $componentRequirements = $this->buildComponentRequirements($workOrder->bom->items, (float) $workOrder->quantity);
 
         return Inertia::render('work-orders/ReportForm', [
             'workOrder' => [
@@ -336,6 +317,7 @@ class WorkOrderController extends Controller
                 ],
             ],
             'components' => $componentRequirements,
+            'warehouses' => Warehouse::query()->orderBy('code')->get(['id', 'code', 'name']),
             'recentReports' => $workOrder->reports->take(10)->map(fn (WorkOrderReport $report): array => [
                 'id' => $report->id,
                 'previous_status' => $report->previous_status,
@@ -357,9 +339,25 @@ class WorkOrderController extends Controller
     {
         $validated = $request->validated();
 
-        DB::transaction(function () use ($request, $validated, $workOrder): void {
-            $workOrder->loadMissing('bom.items.componentPart');
+        $workOrder->loadMissing('bom.items.componentPart');
 
+        $shortfalls = $this->findStockDrivenShortfalls(
+            $workOrder->bom->items,
+            $validated['components'] ?? [],
+            $request->user()?->id,
+        );
+
+        if ($shortfalls !== []) {
+            $summary = collect($shortfalls)
+                ->map(fn (array $s): string => "{$s['part']->part_number} (WO {$s['work_order']->wo_number})")
+                ->implode(', ');
+
+            throw ValidationException::withMessages([
+                'components' => "Stock tidak cukup untuk: {$summary}. WO replenishment sudah dibuat/tersedia - selesaikan WO tersebut dulu sebelum melanjutkan report ini.",
+            ]);
+        }
+
+        DB::transaction(function () use ($request, $validated, $workOrder): void {
             $report = WorkOrderReport::create([
                 'work_order_id' => $workOrder->id,
                 'reported_by' => $request->user()?->id,
@@ -370,83 +368,13 @@ class WorkOrderController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            foreach ($validated['consumptions'] ?? [] as $index => $consumption) {
-                $quantity = (int) ($consumption['quantity'] ?? 0);
-
-                if ($quantity <= 0) {
-                    continue;
-                }
-
-                if (empty($consumption['warehouse_id'])) {
-                    throw ValidationException::withMessages([
-                        "consumptions.{$index}.warehouse_id" => 'Warehouse wajib dipilih untuk konsumsi stock.',
-                    ]);
-                }
-
-                $bomItem = $workOrder->bom->items->firstWhere('id', $consumption['bom_item_id']);
-
-                if (! $bomItem instanceof BomItem || $bomItem->line_type !== 'part' || (int) $bomItem->component_part_id !== (int) $consumption['part_id']) {
-                    throw ValidationException::withMessages([
-                        "consumptions.{$index}.quantity" => 'Baris konsumsi tidak valid untuk work order ini.',
-                    ]);
-                }
-
-                $stock = Stock::query()
-                    ->with('part:id,inventory_type')
-                    ->where('part_id', $consumption['part_id'])
-                    ->where('warehouse_id', $consumption['warehouse_id'])
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $stock) {
-                    throw ValidationException::withMessages([
-                        "consumptions.{$index}.warehouse_id" => 'Stock part pada warehouse tersebut tidak ditemukan.',
-                    ]);
-                }
-
-                if ($stock->quantity < $quantity) {
-                    throw ValidationException::withMessages([
-                        "consumptions.{$index}.quantity" => 'Stock tidak cukup untuk dikonsumsi dari warehouse tersebut.',
-                    ]);
-                }
-
-                if ($stock->part?->inventory_type === Part::INVENTORY_TYPE_TOOL) {
-                    throw ValidationException::withMessages([
-                        "consumptions.{$index}.quantity" => 'Part dengan tipe tool tidak boleh dikonsumsi. Gunakan alur peminjaman tools.',
-                    ]);
-                }
-
-                $stock->decrement('quantity', $quantity);
-
-                StockMovement::create([
-                    'part_id' => $stock->part_id,
-                    'warehouse_id' => $stock->warehouse_id,
-                    'work_order_id' => $workOrder->id,
-                    'work_order_report_id' => $report->id,
-                    'movement_type' => 'consume',
-                    'quantity_change' => -$quantity,
-                    'notes' => 'Consumed by '.$workOrder->wo_number,
-                ]);
-
-                $this->logWorkOrder(
-                    $workOrder,
-                    'stock_consumed',
-                    'Stock consumed',
-                    sprintf(
-                        'Consumed %d of %s - %s from warehouse #%d.',
-                        $quantity,
-                        $bomItem->componentPart?->part_number,
-                        $bomItem->componentPart?->name,
-                        $stock->warehouse_id,
-                    ),
-                    [
-                        'part_id' => $stock->part_id,
-                        'warehouse_id' => $stock->warehouse_id,
-                        'quantity' => $quantity,
-                    ],
-                    $request->user()?->id,
-                );
-            }
+            $this->processComponentTree(
+                $workOrder->bom->items,
+                $validated['components'] ?? [],
+                $workOrder,
+                $report,
+                $request->user()?->id,
+            );
 
             $workOrder->update([
                 'status' => $validated['new_status'],
@@ -627,5 +555,380 @@ class WorkOrderController extends Controller
             'description' => $description,
             'metadata' => $metadata,
         ]);
+    }
+
+    /**
+     * Recursively produce (for sub-assemblies) and consume (for raw materials)
+     * a BOM's part items for a report submission. Walks the authoritative BOM
+     * structure server-side — client input only supplies quantities, keyed by
+     * bom_item_id, so the structure itself can't be tampered with.
+     *
+     * @param  Collection<int, BomItem>  $bomItems
+     * @param  array<int|string, array<string, mixed>>  $inputs
+     * @param  list<int>  $visited
+     */
+    private function processComponentTree(
+        Collection $bomItems,
+        array $inputs,
+        WorkOrder $workOrder,
+        WorkOrderReport $report,
+        ?int $userId,
+        array $visited = [],
+    ): void {
+        foreach ($bomItems as $bomItem) {
+            if ($bomItem->line_type !== 'part' || ! $bomItem->componentPart) {
+                continue;
+            }
+
+            $part = $bomItem->componentPart;
+            $input = $inputs[$bomItem->id] ?? [];
+            $subBom = in_array($part->id, $visited, true) ? null : $part->activeBom();
+            $isOrderOriented = $subBom !== null && $subBom->planning_strategy === Bom::PLANNING_STRATEGY_ORDER_ORIENTED;
+
+            if ($isOrderOriented) {
+                $goodQty = (int) round((float) ($input['good_quantity'] ?? 0));
+                $rejectQty = (int) round((float) ($input['reject_quantity'] ?? 0));
+
+                if ($goodQty <= 0 && $rejectQty <= 0) {
+                    continue;
+                }
+
+                if (empty($input['warehouse_id'])) {
+                    throw ValidationException::withMessages([
+                        "components.{$bomItem->id}.warehouse_id" => "Warehouse wajib dipilih untuk produksi {$part->part_number}.",
+                    ]);
+                }
+
+                $warehouseId = (int) $input['warehouse_id'];
+
+                // Produce this sub-assembly's own components first.
+                $this->processComponentTree(
+                    $subBom->loadMissing('items.componentPart')->items,
+                    $inputs,
+                    $workOrder,
+                    $report,
+                    $userId,
+                    [...$visited, $part->id],
+                );
+
+                $stock = Stock::query()->firstOrCreate(
+                    ['part_id' => $part->id, 'warehouse_id' => $warehouseId],
+                    ['quantity' => 0],
+                );
+
+                $stock->increment('quantity', $goodQty);
+
+                StockMovement::create([
+                    'part_id' => $part->id,
+                    'warehouse_id' => $warehouseId,
+                    'work_order_id' => $workOrder->id,
+                    'work_order_report_id' => $report->id,
+                    'movement_type' => 'produce',
+                    'quantity_change' => $goodQty,
+                    'notes' => 'Produced for '.$workOrder->wo_number,
+                ]);
+
+                WorkOrderReportProduction::create([
+                    'work_order_report_id' => $report->id,
+                    'work_order_id' => $workOrder->id,
+                    'bom_item_id' => $bomItem->id,
+                    'part_id' => $part->id,
+                    'bom_id' => $subBom->id,
+                    'warehouse_id' => $warehouseId,
+                    'good_quantity' => $goodQty,
+                    'reject_quantity' => $rejectQty,
+                ]);
+
+                // Immediately consumed into the parent ("produce lalu consume").
+                $stock->decrement('quantity', $goodQty);
+
+                StockMovement::create([
+                    'part_id' => $part->id,
+                    'warehouse_id' => $warehouseId,
+                    'work_order_id' => $workOrder->id,
+                    'work_order_report_id' => $report->id,
+                    'movement_type' => 'consume',
+                    'quantity_change' => -$goodQty,
+                    'notes' => 'Consumed by '.$workOrder->wo_number,
+                ]);
+
+                $this->logWorkOrder(
+                    $workOrder,
+                    'sub_assembly_produced',
+                    'Sub-assembly produced',
+                    sprintf(
+                        'Produced %d (reject %d) of %s - %s using BOM "%s", then consumed into parent.',
+                        $goodQty,
+                        $rejectQty,
+                        $part->part_number,
+                        $part->name,
+                        $subBom->name,
+                    ),
+                    [
+                        'part_id' => $part->id,
+                        'warehouse_id' => $warehouseId,
+                        'good_quantity' => $goodQty,
+                        'reject_quantity' => $rejectQty,
+                    ],
+                    $userId,
+                );
+
+                continue;
+            }
+
+            $quantity = (int) ($input['quantity'] ?? 0);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            if (empty($input['warehouse_id'])) {
+                throw ValidationException::withMessages([
+                    "components.{$bomItem->id}.warehouse_id" => 'Warehouse wajib dipilih untuk konsumsi stock.',
+                ]);
+            }
+
+            $stock = Stock::query()
+                ->with('part:id,inventory_type')
+                ->where('part_id', $part->id)
+                ->where('warehouse_id', $input['warehouse_id'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $stock) {
+                throw ValidationException::withMessages([
+                    "components.{$bomItem->id}.warehouse_id" => 'Stock part pada warehouse tersebut tidak ditemukan.',
+                ]);
+            }
+
+            if ($stock->quantity < $quantity) {
+                throw ValidationException::withMessages([
+                    "components.{$bomItem->id}.quantity" => 'Stock tidak cukup untuk dikonsumsi dari warehouse tersebut.',
+                ]);
+            }
+
+            if ($stock->part?->inventory_type === Part::INVENTORY_TYPE_TOOL) {
+                throw ValidationException::withMessages([
+                    "components.{$bomItem->id}.quantity" => 'Part dengan tipe tool tidak boleh dikonsumsi. Gunakan alur peminjaman tools.',
+                ]);
+            }
+
+            $stock->decrement('quantity', $quantity);
+
+            StockMovement::create([
+                'part_id' => $stock->part_id,
+                'warehouse_id' => $stock->warehouse_id,
+                'work_order_id' => $workOrder->id,
+                'work_order_report_id' => $report->id,
+                'movement_type' => 'consume',
+                'quantity_change' => -$quantity,
+                'notes' => 'Consumed by '.$workOrder->wo_number,
+            ]);
+
+            $this->logWorkOrder(
+                $workOrder,
+                'stock_consumed',
+                'Stock consumed',
+                sprintf(
+                    'Consumed %d of %s - %s from warehouse #%d.',
+                    $quantity,
+                    $part->part_number,
+                    $part->name,
+                    $stock->warehouse_id,
+                ),
+                [
+                    'part_id' => $stock->part_id,
+                    'warehouse_id' => $stock->warehouse_id,
+                    'quantity' => $quantity,
+                ],
+                $userId,
+            );
+        }
+    }
+
+    /**
+     * Walk the BOM tree looking for components that won't have enough stock
+     * for what's being reported. Order-oriented sub-assemblies are descended
+     * into (their materials are handled inline within this same report
+     * submission), everything else — raw materials and stock-driven
+     * sub-assemblies alike — is checked directly against current stock. A
+     * shortfall on a stock-driven part auto-generates (or reuses) a
+     * replenishment work order for it.
+     *
+     * @param  Collection<int, BomItem>  $bomItems
+     * @param  array<int|string, array<string, mixed>>  $inputs
+     * @param  list<int>  $visited
+     * @return list<array{part: Part, work_order: WorkOrder}>
+     */
+    private function findStockDrivenShortfalls(Collection $bomItems, array $inputs, ?int $userId, array $visited = []): array
+    {
+        $shortfalls = [];
+
+        foreach ($bomItems as $bomItem) {
+            if ($bomItem->line_type !== 'part' || ! $bomItem->componentPart) {
+                continue;
+            }
+
+            $part = $bomItem->componentPart;
+            $input = $inputs[$bomItem->id] ?? [];
+            $subBom = in_array($part->id, $visited, true) ? null : $part->activeBom();
+            $isOrderOriented = $subBom !== null && $subBom->planning_strategy === Bom::PLANNING_STRATEGY_ORDER_ORIENTED;
+
+            if ($isOrderOriented) {
+                $goodQty = (int) round((float) ($input['good_quantity'] ?? 0));
+                $rejectQty = (int) round((float) ($input['reject_quantity'] ?? 0));
+
+                if ($goodQty <= 0 && $rejectQty <= 0) {
+                    continue;
+                }
+
+                $shortfalls = [
+                    ...$shortfalls,
+                    ...$this->findStockDrivenShortfalls(
+                        $subBom->loadMissing('items.componentPart')->items,
+                        $inputs,
+                        $userId,
+                        [...$visited, $part->id],
+                    ),
+                ];
+
+                continue;
+            }
+
+            $requestedQty = (int) ($input['quantity'] ?? 0);
+
+            if ($requestedQty <= 0 || empty($input['warehouse_id']) || ! $subBom || $subBom->planning_strategy !== Bom::PLANNING_STRATEGY_STOCK_DRIVEN) {
+                continue;
+            }
+
+            $availableQty = (int) (Stock::query()
+                ->where('part_id', $part->id)
+                ->where('warehouse_id', $input['warehouse_id'])
+                ->value('quantity') ?? 0);
+
+            if ($availableQty >= $requestedQty) {
+                continue;
+            }
+
+            $shortfalls[] = [
+                'part' => $part,
+                'work_order' => $this->maybeGenerateReplenishmentWorkOrder($part, $subBom, $requestedQty - $availableQty, $userId),
+            ];
+        }
+
+        return $shortfalls;
+    }
+
+    /**
+     * Get (or auto-create) an open replenishment work order for a stock-driven
+     * part that's come up short. Reuses an already-open replenishment WO
+     * instead of spawning duplicates. The generated quantity covers at least
+     * the immediate shortfall, and the part's safety stock if that's larger.
+     */
+    private function maybeGenerateReplenishmentWorkOrder(Part $part, Bom $bom, int $shortfallQty, ?int $userId): WorkOrder
+    {
+        $notesMarker = 'Auto generated (stock driven replenishment)';
+
+        $existing = WorkOrder::query()
+            ->where('bom_id', $bom->id)
+            ->whereIn('status', ['draft', 'released', 'in_progress'])
+            ->where('notes', 'like', $notesMarker.'%')
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $quantity = max($shortfallQty, (int) $part->safety_stock, 1);
+
+        $workOrder = WorkOrder::create([
+            'wo_number' => WorkOrder::generateNumber(),
+            'bom_id' => $bom->id,
+            'quantity' => $quantity,
+            'status' => 'draft',
+            'notes' => $notesMarker.' - stock '.$part->part_number.' tidak cukup.',
+        ]);
+
+        $this->logWorkOrder(
+            $workOrder,
+            'created',
+            'Replenishment WO auto-created',
+            sprintf(
+                'WO dibuat otomatis karena stock %s - %s tidak cukup (kurang %d).',
+                $part->part_number,
+                $part->name,
+                $shortfallQty,
+            ),
+            [
+                'source' => 'stock_driven_replenishment',
+                'part_id' => $part->id,
+                'shortfall_quantity' => $shortfallQty,
+                'quantity' => $quantity,
+            ],
+            $userId,
+        );
+
+        return $workOrder;
+    }
+
+    /**
+     * Recursively build the component requirement tree for a BOM's part items.
+     * When a component part is itself a sub-assembly with an *order oriented*
+     * active BOM, its own components are expanded underneath it so they can be
+     * produced and reported inline within the same work order. Sub-assemblies
+     * whose BOM is *stock driven* are treated as leaves here — their materials
+     * are that other (separately reported) work order's concern.
+     *
+     * @param  Collection<int, BomItem>  $bomItems
+     * @param  list<int>  $visited
+     * @return list<array<string, mixed>>
+     */
+    private function buildComponentRequirements(Collection $bomItems, float $parentQuantity, array $visited = []): array
+    {
+        return $bomItems
+            ->filter(fn (BomItem $item): bool => $item->line_type === 'part' && $item->componentPart !== null)
+            ->map(function (BomItem $item) use ($parentQuantity, $visited): array {
+                $part = $item->componentPart;
+                $recommendedQuantity = (int) max(0, round($parentQuantity * (float) $item->quantity));
+                $subBom = in_array($part->id, $visited, true) ? null : $part->activeBom();
+                $isOrderOriented = $subBom !== null && $subBom->planning_strategy === Bom::PLANNING_STRATEGY_ORDER_ORIENTED;
+
+                if ($isOrderOriented) {
+                    $subBom->load(['items.componentPart.stocks.warehouse', 'items.workCenter']);
+                }
+
+                $node = [
+                    'bom_item_id' => $item->id,
+                    'part_id' => $part->id,
+                    'part_number' => $part->part_number,
+                    'part_name' => $part->name,
+                    'bom_quantity' => (string) $item->quantity,
+                    'recommended_quantity' => $recommendedQuantity,
+                    'is_sub_assembly' => $isOrderOriented,
+                    'bom_id' => $subBom?->id,
+                    'bom_name' => $subBom?->name,
+                    'planning_strategy' => $subBom?->planning_strategy,
+                    'stocks' => $part->stocks
+                        ->map(fn (Stock $stock): array => [
+                            'warehouse_id' => $stock->warehouse_id,
+                            'warehouse_code' => $stock->warehouse?->code,
+                            'warehouse_name' => $stock->warehouse?->name,
+                            'quantity' => (int) $stock->quantity,
+                        ])
+                        ->values(),
+                    'children' => $isOrderOriented
+                        ? $this->buildComponentRequirements($subBom->items, $recommendedQuantity, [...$visited, $part->id])
+                        : [],
+                ];
+
+                if ($subBom && $subBom->planning_strategy === Bom::PLANNING_STRATEGY_STOCK_DRIVEN) {
+                    $node['safety_stock'] = (int) $part->safety_stock;
+                    $node['total_stock'] = (int) $part->stocks->sum('quantity');
+                }
+
+                return $node;
+            })
+            ->values()
+            ->all();
     }
 }

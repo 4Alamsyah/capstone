@@ -66,7 +66,13 @@ const deleteBom = (bom: BomItem) => {
         return;
     }
 
-    useForm({}).delete(`/bom/${bom.id}`);
+    useForm({}).delete(`/bom/${bom.id}`, {
+        onError: (errors) => {
+            if (errors.bom) {
+                window.alert(errors.bom);
+            }
+        },
+    });
 };
 
 const paginationText = computed(() => {
