@@ -127,7 +127,7 @@ class PartController extends Controller
                 'safety_stock' => $validated['safety_stock'],
             ]);
 
-            collect($validated['suppliers'])
+            collect($validated['suppliers'] ?? [])
                 ->unique('supplier_id')
                 ->each(function (array $supplierRow) use ($part): void {
                     PartSupplierPrice::query()->create([
@@ -174,7 +174,7 @@ class PartController extends Controller
 
             $part->supplierPrices()->delete();
 
-            collect($validated['suppliers'])
+            collect($validated['suppliers'] ?? [])
                 ->unique('supplier_id')
                 ->each(function (array $supplierRow) use ($part): void {
                     PartSupplierPrice::query()->create([

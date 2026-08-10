@@ -117,6 +117,8 @@ const formatInventoryType = (inventoryType: 'material' | 'tool'): string => {
     return inventoryType === 'tool' ? 'Tool (Borrow/Return)' : 'Material (Consumable)';
 };
 
+const isEditSupplierRequired = computed(() => editForm.category === 'purchase');
+
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
         return 'No part data';
@@ -373,8 +375,16 @@ const deletePart = (part: PartItem) => {
                         <div class="space-y-3 rounded-lg border border-sidebar-border/70 p-4">
                             <div>
                                 <h3 class="text-sm font-semibold">Supplier Purchase Prices</h3>
-                                <p class="text-sm text-muted-foreground">Harga beli per supplier yang sudah terhubung ke part ini.</p>
+                                <p class="text-sm text-muted-foreground">
+                                    Harga beli per supplier yang sudah terhubung ke part ini.
+                                    <template v-if="isEditSupplierRequired">Wajib diisi untuk Purchase Part.</template>
+                                    <template v-else>Opsional untuk Manufacture Part.</template>
+                                </p>
                             </div>
+                            <p v-if="!editForm.suppliers.length" class="text-sm text-muted-foreground">
+                                Belum ada supplier terhubung ke part ini.
+                            </p>
+                            <InputError :message="editForm.errors.suppliers" />
 
                             <div
                                 v-for="(supplier, index) in editForm.suppliers"

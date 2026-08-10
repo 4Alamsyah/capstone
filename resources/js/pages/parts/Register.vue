@@ -62,6 +62,8 @@ const selectedSuppliers = computed(() => {
     return props.suppliers.filter((supplier) => selectedSupplierIds.value.includes(supplier.id));
 });
 
+const isSupplierRequired = computed(() => form.category === 'purchase');
+
 const syncSuppliersSelection = (supplierIds: number[]) => {
     const previousPurchasePriceBySupplier = new Map(
         form.suppliers.map((supplierRow) => [supplierRow.supplier_id, supplierRow.purchase_price]),
@@ -237,12 +239,14 @@ const submit = () => {
                         <h3 class="text-sm font-semibold">Suppliers (Select2 Multiple)</h3>
                         <p class="text-sm text-muted-foreground">
                             Tambah supplier dari menu Supplier terlebih dahulu, lalu pilih lebih dari satu supplier di sini.
+                            <template v-if="isSupplierRequired">Wajib diisi untuk Purchase Part.</template>
+                            <template v-else>Opsional untuk Manufacture Part.</template>
                         </p>
                     </div>
 
                     <div class="grid gap-2"
                     >
-                        <Label for="suppliers">Supplier</Label>
+                        <Label for="suppliers">Supplier<span v-if="isSupplierRequired" class="text-destructive"> *</span></Label>
                         <select
                             id="suppliers"
                             ref="supplierSelectRef"
