@@ -81,7 +81,7 @@ const items: NavItem[] = [
     },
 
     {
-        title: 'Work Order',
+        title: 'Manufacturing',
         href: '/work-orders',
         icon: LayoutGrid,
         items: [
