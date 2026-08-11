@@ -130,7 +130,7 @@ const paginationText = computed(() => {
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
-                                <th class="py-2 pr-3">WO Number</th>
+                                <th class="py-2 pr-3">MO Number</th>
                                 <th class="py-2 pr-3">Source PO</th>
                                 <th class="py-2 pr-3">Product</th>
                                 <th class="py-2 pr-3">BOM</th>
@@ -142,7 +142,7 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="workOrders.length === 0">
-                                <td colspan="8" class="py-8 text-center text-muted-foreground">No work orders found.</td>
+                                <td colspan="8" class="py-8 text-center text-muted-foreground">No manufacture orders found.</td>
                             </tr>
                             <tr
                                 v-for="wo in workOrders"
