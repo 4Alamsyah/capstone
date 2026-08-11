@@ -144,16 +144,8 @@ const openDeliveryOrderPdf = (order: OrderItem) => {
     window.open(`/sales/customer-orders/${order.id}/delivery-order`, '_blank', 'noopener');
 };
 
-const openInvoicePdf = (order: OrderItem) => {
-    if (!order.invoice.id) {
-        return;
-    }
-
-    window.open(`/sales/invoices/${order.invoice.id}/document`, '_blank', 'noopener');
-};
-
 const hasDocumentActions = (order: OrderItem): boolean => {
-    return order.status >= 4 || !!order.invoice.id;
+    return order.status >= 4;
 };
 
 const undoReport = (order: OrderItem) => {
@@ -335,9 +327,6 @@ const paginationText = computed(() => {
                                             <DropdownMenuLabel v-if="hasDocumentActions(order)">Documents</DropdownMenuLabel>
                                             <DropdownMenuItem v-if="order.status >= 4" @select.prevent="openDeliveryOrderPdf(order)">
                                                 Download DO PDF
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.invoice.id" @select.prevent="openInvoicePdf(order)">
-                                                Download Invoice PDF
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
