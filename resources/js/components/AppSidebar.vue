@@ -44,231 +44,236 @@ const hasPermission = (key: string): boolean => {
 };
 
 const mainNavItems = computed<NavItem[]>(() => {
-const items: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-        items: undefined,
-    },
-    {
-        title: 'Part',
-        href: '/parts',
-        icon: PackageSearch,
-        items: [
-            {
-                title: 'Part List',
-                href: '/parts',
-            },
-            {
-                title: 'Register Part',
-                href: '/parts/register',
-            },
-            {
-                title: 'Stock',
-                href: '/parts/stock',
-            },
-            {
-                title: 'BOM',
-                href: '/bom',
-            },
-        ],
-    },
-    {
-        title: 'Supplier',
-        href: '/suppliers',
-        icon: PackageSearch,
-    },
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+            items: undefined,
+        },
+        {
+            title: 'Part',
+            href: '/parts',
+            icon: PackageSearch,
+            items: [
+                {
+                    title: 'Part List',
+                    href: '/parts',
+                },
+                {
+                    title: 'Register Part',
+                    href: '/parts/register',
+                },
+                {
+                    title: 'Stock',
+                    href: '/parts/stock',
+                },
+                {
+                    title: 'BOM',
+                    href: '/bom',
+                },
+            ],
+        },
 
-    {
-        title: 'Manufacturing',
-        href: '/work-orders',
-        icon: LayoutGrid,
-        items: [
-            {
-                title: 'MO List',
-                href: '/work-orders',
-            },
-            {
-                title: 'Report MO',
-                href: '/work-orders/report',
-            },
-            {
-                title: 'Log MO',
-                href: '/work-orders/logs',
-            },
-            {
-                title: 'Lead Time',
-                href: '/work-orders/lead-time',
-            },
-            {
-                title: 'Work Center',
-                href: '/work-centers',
-            },
-        ],
-    },
-    {
-        title: 'Sales',
-        href: '/sales/customer-orders',
-        icon: ShoppingCart,
-        items: [
-            {
-                title: 'Register CO',
-                href: '/sales/customer-orders/create',
-            },
-            {
-                title: 'Order List',
-                href: '/sales/customer-orders',
-            },
-            {
-                title: 'Register Quotation',
-                href: '/sales/quotations/create',
-            },
-            {
-                title: 'Quotation List',
-                href: '/sales/quotations',
-            },
-            {
-                title: 'Register Invoice',
-                href: '/sales/invoices/create',
-            },
-            {
-                title: 'Invoice List',
-                href: '/sales/invoices',
-            },
-            {
-                title: 'Customer Register',
-                href: '/sales/customers',
-            },
-        ],
-    },
-    {
-        title: 'Purchase',
-        href: '/purchase/po',
-        icon: Package,
-        items: [
-            {
-                title: 'Register PO',
-                href: '/purchase/po/create',
-            },
-            {
-                title: 'List PO',
-                href: '/purchase/po',
-            },
-            {
-                title: 'Report Arrival',
-                href: '/purchase/po/arrivals',
-            },
-            {
-                title: 'Log Report',
-                href: '/purchase/po/arrivals/logs',
-            },
-            {
-                title: 'Register Voucher',
-                href: '/purchase/voucher/create',
-            },
-            {
-                title: 'List Voucher',
-                href: '/purchase/voucher',
-            },
-            {
-                title: 'Stock Rekomendasi',
-                href: '/purchase/voucher/stock-recommendations',
-            },
-        ],
-    },
-    {
-        title: 'Accounting',
-        href: '/accounting/general',
-        icon: Calculator,
-        items: [
-            {
-                title: 'General',
-                href: '/accounting/general',
-            },
-            // {
-            //     title: 'Manual Journal',
-            //     href: '/accounting/manual-journal',
-            // },
-            {
-                title: 'Chart of Accounts',
-                href: '/accounting/chart-of-accounts',
-            },
-            {
-                title: 'Fiscal Periods',
-                href: '/accounting/fiscal-periods',
-            },
-            {
-                title: 'Journal Entries',
-                href: '/accounting/journal-entries',
-            },
-            {
-                title: 'Journal Lines',
-                href: '/accounting/journal-lines',
-            },
-            {
-                title: 'Audit Trails',
-                href: '/accounting/audit-trails',
-            },
-            {
-                title: 'Tax Setting',
-                href: '/accounting/tax-setting',
-            },
-            {
-                title: 'GL Setting',
-                href: '/accounting/gl-setting',
-            },
-            {
-                title: 'AR Aging',
-                href: '/accounting/ar-aging',
-            },
-        ],
-    },
-    {
-        title: 'General Setting',
-        href: '/settings',
-        icon: Settings,
-        items: [
-            {
-                title: 'General Setting',
-                href: '/settings/general',
-            },
-            {
-                title: 'Payment Terms',
-                href: '/settings/general/payment-terms',
-            },
-            {
-                title: 'Role Access',
-                href: '/settings/role-access',
-            },
-        ],
-    },
-];
+        {
+            title: 'Manufacturing',
+            href: '/work-orders',
+            icon: LayoutGrid,
+            items: [
+                {
+                    title: 'MO List',
+                    href: '/work-orders',
+                },
+                {
+                    title: 'Report MO',
+                    href: '/work-orders/report',
+                },
+                {
+                    title: 'Log MO',
+                    href: '/work-orders/logs',
+                },
+                {
+                    title: 'Lead Time',
+                    href: '/work-orders/lead-time',
+                },
+                {
+                    title: 'Work Center',
+                    href: '/work-centers',
+                },
+            ],
+        },
+        {
+            title: 'Sales',
+            href: '/sales/customer-orders',
+            icon: ShoppingCart,
+            items: [
+                {
+                    title: 'Register CO',
+                    href: '/sales/customer-orders/create',
+                },
+                {
+                    title: 'Order List',
+                    href: '/sales/customer-orders',
+                },
+                {
+                    title: 'Register Quotation',
+                    href: '/sales/quotations/create',
+                },
+                {
+                    title: 'Quotation List',
+                    href: '/sales/quotations',
+                },
+                {
+                    title: 'Register Invoice',
+                    href: '/sales/invoices/create',
+                },
+                {
+                    title: 'Invoice List',
+                    href: '/sales/invoices',
+                },
+                {
+                    title: 'Customer Register',
+                    href: '/sales/customers',
+                },
+            ],
+        },
+        {
+            title: 'Purchase',
+            href: '/purchase/po',
+            icon: Package,
+            items: [
+                {
+                    title: 'Register PO',
+                    href: '/purchase/po/create',
+                },
+                {
+                    title: 'List PO',
+                    href: '/purchase/po',
+                },
+                {
+                    title: 'Report Arrival',
+                    href: '/purchase/po/arrivals',
+                },
+                {
+                    title: 'Log Report',
+                    href: '/purchase/po/arrivals/logs',
+                },
+                {
+                    title: 'Register Voucher',
+                    href: '/purchase/voucher/create',
+                },
+                {
+                    title: 'List Voucher',
+                    href: '/purchase/voucher',
+                },
+                {
+                    title: 'Stock Rekomendasi',
+                    href: '/purchase/voucher/stock-recommendations',
+                },
+                {
+                    title: 'Supplier',
+                    href: '/suppliers',
+                },
+            ],
+        },
+        {
+            title: 'Accounting',
+            href: '/accounting/general',
+            icon: Calculator,
+            items: [
+                {
+                    title: 'General',
+                    href: '/accounting/general',
+                },
+                // {
+                //     title: 'Manual Journal',
+                //     href: '/accounting/manual-journal',
+                // },
+                {
+                    title: 'Chart of Accounts',
+                    href: '/accounting/chart-of-accounts',
+                },
+                {
+                    title: 'Fiscal Periods',
+                    href: '/accounting/fiscal-periods',
+                },
+                {
+                    title: 'Journal Entries',
+                    href: '/accounting/journal-entries',
+                },
+                {
+                    title: 'Journal Lines',
+                    href: '/accounting/journal-lines',
+                },
+                {
+                    title: 'Audit Trails',
+                    href: '/accounting/audit-trails',
+                },
+                {
+                    title: 'Tax Setting',
+                    href: '/accounting/tax-setting',
+                },
+                {
+                    title: 'GL Setting',
+                    href: '/accounting/gl-setting',
+                },
+                {
+                    title: 'AR Aging',
+                    href: '/accounting/ar-aging',
+                },
+            ],
+        },
+        {
+            title: 'General Setting',
+            href: '/settings',
+            icon: Settings,
+            items: [
+                {
+                    title: 'General Setting',
+                    href: '/settings/general',
+                },
+                {
+                    title: 'Payment Terms',
+                    href: '/settings/general/payment-terms',
+                },
+                {
+                    title: 'Role Access',
+                    href: '/settings/role-access',
+                },
+            ],
+        },
+    ];
 
-return items.filter((item) => {
-    if (item.title === 'Dashboard') return hasPermission('menu.dashboard');
-    if (item.title === 'Part') return hasPermission('menu.parts');
-    if (item.title === 'Supplier') return hasPermission('menu.suppliers');
-    if (item.title === 'Work Order') return hasPermission('menu.work_orders');
-    if (item.title === 'Sales') return hasPermission('menu.sales');
-    if (item.title === 'Purchase') return hasPermission('menu.purchase');
-    if (item.title === 'Accounting') return hasPermission('menu.accounting');
-    if (item.title === 'General Setting') {
-        const childItems = item.items?.filter((child) => {
-            if (child.href === '/settings/general') return hasPermission('menu.settings.general');
-            if (child.href === '/settings/general/payment-terms') return hasPermission('menu.settings.general');
-            if (child.href === '/settings/role-access') return hasPermission('menu.settings.role_access');
+    return items.filter((item) => {
+        if (item.title === 'Dashboard') return hasPermission('menu.dashboard');
+        if (item.title === 'Part') return hasPermission('menu.parts');
+        if (item.title === 'Supplier') return hasPermission('menu.suppliers');
+        if (item.title === 'Work Order')
+            return hasPermission('menu.work_orders');
+        if (item.title === 'Sales') return hasPermission('menu.sales');
+        if (item.title === 'Purchase') return hasPermission('menu.purchase');
+        if (item.title === 'Accounting')
+            return hasPermission('menu.accounting');
+        if (item.title === 'General Setting') {
+            const childItems =
+                item.items?.filter((child) => {
+                    if (child.href === '/settings/general')
+                        return hasPermission('menu.settings.general');
+                    if (child.href === '/settings/general/payment-terms')
+                        return hasPermission('menu.settings.general');
+                    if (child.href === '/settings/role-access')
+                        return hasPermission('menu.settings.role_access');
 
-            return true;
-        }) ?? [];
+                    return true;
+                }) ?? [];
 
-        item.items = childItems;
+            item.items = childItems;
 
-        return childItems.length > 0;
-    }
+            return childItems.length > 0;
+        }
 
-    return true;
-});
+        return true;
+    });
 });
 
 const footerNavItems: NavItem[] = [
