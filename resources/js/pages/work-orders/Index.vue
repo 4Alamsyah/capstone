@@ -88,7 +88,7 @@ const deleteWo = (wo: WorkOrderItem) => {
 
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
-        return 'No work orders found';
+        return 'No Manufacturer Order found';
     }
 
     return `Showing ${props.pagination.from}–${props.pagination.to} of ${props.pagination.total} work orders`;
@@ -96,21 +96,21 @@ const paginationText = computed(() => {
 </script>
 
 <template>
-    <Head title="Work Orders" />
+    <Head title="Manufacturer Order" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <Heading title="Work Orders" description="Buat dan pantau Work Order produksi." />
+                <Heading title="Manufacturer Order" description="Buat dan pantau Work Order produksi." />
                 <Button as-child>
-                    <Link href="/work-orders/create">+ Create WO</Link>
+                    <Link href="/work-orders/create">+ Create MO</Link>
                 </Button>
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
                 <!-- Search / filter bar -->
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h3 class="text-sm font-semibold">Work Order List</h3>
+                    <h3 class="text-sm font-semibold">Manufacturer Order List</h3>
                     <form class="flex w-full flex-wrap items-center gap-2 sm:w-auto" @submit.prevent="submitSearch">
                         <Input v-model="searchForm.search" placeholder="Search WO or product..." class="w-full sm:w-64" />
                         <select

@@ -58,6 +58,16 @@ const statusColors: Record<string, string> = {
     cancelled:   'bg-red-100 text-red-500',
 };
 
+const formatQty = (value: string | number) => {
+    const num = parseFloat(String(value));
+
+    if (Number.isNaN(num)) {
+        return String(value);
+    }
+
+    return num.toFixed(4).replace(/\.?0+$/, '');
+};
+
 const isEditing = ref(false);
 
 const editForm = useForm({
@@ -140,7 +150,7 @@ const deleteWo = () => {
                         </div>
                         <div>
                             <dt class="text-xs text-muted-foreground">Quantity</dt>
-                            <dd>{{ workOrder.quantity }}</dd>
+                            <dd>{{ formatQty(workOrder.quantity) }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-muted-foreground">Scheduled Date</dt>
@@ -179,7 +189,7 @@ const deleteWo = () => {
                                     <th class="py-2 pr-3">Type</th>
                                     <th class="py-2 pr-3">Component / Operation</th>
                                     <th class="py-2 pr-3">Qty per BOM</th>
-                                    <th class="py-2">Required (× {{ workOrder.quantity }})</th>
+                                    <th class="py-2">Required × ({{ formatQty(workOrder.quantity) }})</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -201,9 +211,9 @@ const deleteWo = () => {
                                         </span>
                                     </td>
                                     <td class="py-2 pr-3">{{ item.label ?? '–' }}</td>
-                                    <td class="py-2 pr-3">{{ item.quantity }}</td>
+                                    <td class="py-2 pr-3">{{ formatQty(item.quantity) }}</td>
                                     <td class="py-2 font-medium">
-                                        {{ (parseFloat(item.quantity) * parseFloat(workOrder.quantity)).toFixed(4).replace(/\.?0+$/, '') }}
+                                        {{ formatQty(parseFloat(item.quantity) * parseFloat(workOrder.quantity)) }}
                                     </td>
                                 </tr>
                             </tbody>
