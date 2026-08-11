@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type BomLineItem = {
@@ -56,16 +57,6 @@ const statusColors: Record<string, string> = {
     in_progress: 'bg-yellow-100 text-yellow-700',
     completed:   'bg-green-100 text-green-700',
     cancelled:   'bg-red-100 text-red-500',
-};
-
-const formatQty = (value: string | number) => {
-    const num = parseFloat(String(value));
-
-    if (Number.isNaN(num)) {
-        return String(value);
-    }
-
-    return num.toFixed(4).replace(/\.?0+$/, '');
 };
 
 const isEditing = ref(false);

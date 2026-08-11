@@ -2,6 +2,7 @@
 import InputError from '@/components/InputError.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatQty } from '@/lib/utils';
 
 export type StockOption = {
     warehouse_id: number;
@@ -66,7 +67,7 @@ defineProps<{
             <div class="font-medium">{{ node.part_number }} - {{ node.part_name }}</div>
         </div>
         <div class="mb-2 text-xs text-muted-foreground">
-            Qty per BOM: {{ node.bom_quantity }} | Recommended: {{ node.recommended_quantity }}
+            Qty per BOM: {{ formatQty(node.bom_quantity) }} | Recommended: {{ node.recommended_quantity }}
             <span v-if="node.is_sub_assembly"> | BOM: {{ node.bom_name }}</span>
             <span v-else-if="node.planning_strategy === 'stock_driven'">
                 | Stock saat ini: {{ node.total_stock }} / Safety stock: {{ node.safety_stock }}

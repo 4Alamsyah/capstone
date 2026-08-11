@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatQty } from '@/lib/utils';
+
 export type BomTreeItem = {
     id: number;
     line_type: 'part' | 'operation';
@@ -32,7 +34,7 @@ defineProps<{
                         {{ item.line_type === 'part' ? 'Part' : 'Op' }}
                     </span>
                     <span>{{ item.label ?? '–' }}</span>
-                    <span class="text-muted-foreground">× {{ item.quantity }}</span>
+                    <span class="text-muted-foreground">× {{ formatQty(item.quantity) }}</span>
                 </div>
                 <BomHierarchy v-if="item.sub_bom" :tree="item.sub_bom" class="mt-1.5" />
             </li>

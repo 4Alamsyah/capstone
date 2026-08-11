@@ -5,6 +5,7 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type QuotationItem = {
@@ -157,7 +158,7 @@ const paginationText = computed(() => {
                                 <td class="py-2 pr-3">
                                     <div class="space-y-1">
                                         <div v-for="item in quotation.items" :key="item.id" class="text-xs text-muted-foreground">
-                                            {{ item.part_number || '-' }} - {{ item.part_name || '-' }} x {{ item.quantity }}
+                                            {{ item.part_number || '-' }} - {{ item.part_name || '-' }} x {{ formatQty(item.quantity) }}
                                         </div>
                                     </div>
                                 </td>

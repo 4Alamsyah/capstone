@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type PoItem = {
@@ -105,9 +106,9 @@ const submit = () => {
                                 {{ props.purchaseOrder.items[index]?.part_number }} - {{ props.purchaseOrder.items[index]?.part_name }}
                             </div>
                             <div class="mb-3 text-xs text-muted-foreground">
-                                Ordered: {{ props.purchaseOrder.items[index]?.quantity }} {{ props.purchaseOrder.items[index]?.unit }} |
-                                Received: {{ props.purchaseOrder.items[index]?.received_quantity }} |
-                                Remaining: {{ props.purchaseOrder.items[index]?.remaining_quantity }}
+                                Ordered: {{ formatQty(props.purchaseOrder.items[index]?.quantity) }} {{ props.purchaseOrder.items[index]?.unit }} |
+                                Received: {{ formatQty(props.purchaseOrder.items[index]?.received_quantity) }} |
+                                Remaining: {{ formatQty(props.purchaseOrder.items[index]?.remaining_quantity) }}
                             </div>
 
                             <div class="grid gap-3 md:grid-cols-[0.7fr_1fr_1fr]">

@@ -5,6 +5,7 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type WoBom = {
@@ -158,7 +159,7 @@ const paginationText = computed(() => {
                                     {{ wo.bom.part.name }}
                                 </td>
                                 <td class="py-2 pr-3 text-muted-foreground">{{ wo.bom.name }}</td>
-                                <td class="py-2 pr-3">{{ wo.quantity }}</td>
+                                <td class="py-2 pr-3">{{ formatQty(wo.quantity) }}</td>
                                 <td class="py-2 pr-3">{{ wo.scheduled_date ?? '–' }}</td>
                                 <td class="py-2 pr-3">
                                     <span

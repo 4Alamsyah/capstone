@@ -5,6 +5,7 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type ReportWorkOrderItem = {
@@ -126,7 +127,7 @@ const paginationText = computed(() => {
                                     {{ workOrder.bom.part.name }}
                                 </td>
                                 <td class="py-2 pr-3">{{ workOrder.bom.name }}</td>
-                                <td class="py-2 pr-3">{{ workOrder.quantity }}</td>
+                                <td class="py-2 pr-3">{{ formatQty(workOrder.quantity) }}</td>
                                 <td class="py-2 pr-3">{{ workOrder.reports_count }}</td>
                                 <td class="py-2 pr-3">{{ statusLabels[workOrder.status] ?? workOrder.status }}</td>
                                 <td class="py-2 text-right">

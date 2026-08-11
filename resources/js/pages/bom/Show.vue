@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type PartOption = {
@@ -433,7 +434,7 @@ const deleteBom = () => {
                                                 </span>
                                             </td>
                                             <td class="py-2 pr-3">{{ item.label ?? '–' }}</td>
-                                            <td class="py-2 pr-3">{{ item.quantity }}</td>
+                                            <td class="py-2 pr-3">{{ formatQty(item.quantity) }}</td>
                                             <td class="py-2 pr-3">{{ item.notes ?? '–' }}</td>
                                             <td class="py-2">
                                                 <Button

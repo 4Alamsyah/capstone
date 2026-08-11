@@ -12,6 +12,7 @@ import ComponentReportNode, {
     type WarehouseOption,
 } from '@/components/work-orders/ComponentReportNode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type RecentReport = {
@@ -205,7 +206,7 @@ const submit = () => {
                             </div>
                             <div>
                                 <dt class="text-xs text-muted-foreground">Planned Qty</dt>
-                                <dd>{{ workOrder.quantity }}</dd>
+                                <dd>{{ formatQty(workOrder.quantity) }}</dd>
                             </div>
                             <div>
                                 <dt class="text-xs text-muted-foreground">Scheduled Date</dt>
@@ -229,7 +230,7 @@ const submit = () => {
                                     <div class="text-xs text-muted-foreground">{{ report.created_at }}</div>
                                 </div>
                                 <div class="mt-2 text-xs text-muted-foreground">
-                                    Good: {{ report.good_quantity }} | Reject: {{ report.reject_quantity }}
+                                    Good: {{ formatQty(report.good_quantity) }} | Reject: {{ formatQty(report.reject_quantity) }}
                                     <span v-if="report.reported_by">| By: {{ report.reported_by }}</span>
                                 </div>
                                 <div v-if="report.notes" class="mt-2 text-sm">{{ report.notes }}</div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Part = { id: number; part_number: string; name: string };
@@ -196,7 +197,7 @@ const convertToPo = () => {
                                 <td class="py-2 pr-3 font-mono text-xs">
                                     {{ item.part.part_number }} — {{ item.part.name }}
                                 </td>
-                                <td class="py-2 pr-3 text-right font-mono">{{ item.quantity }}</td>
+                                <td class="py-2 pr-3 text-right font-mono">{{ formatQty(item.quantity) }}</td>
                                 <td class="py-2 pr-3 text-center">{{ item.unit }}</td>
                                 <td class="py-2 pr-3 text-right font-mono text-muted-foreground">{{ item.stock_on_hand }}</td>
                                 <td class="py-2 pr-3 text-muted-foreground">{{ item.remarks ?? '-' }}</td>
@@ -253,7 +254,7 @@ const convertToPo = () => {
                                 />
                                 <div class="min-w-0 flex-1">
                                     <div class="font-mono text-sm font-medium">{{ item.part.part_number }} — {{ item.part.name }}</div>
-                                    <div class="text-xs text-muted-foreground">Qty: {{ item.quantity }} {{ item.unit }}</div>
+                                    <div class="text-xs text-muted-foreground">Qty: {{ formatQty(item.quantity) }} {{ item.unit }}</div>
                                 </div>
                                 <div class="flex gap-2">
                                     <Input

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Part = {
@@ -213,7 +214,7 @@ const submit = () => {
                                             {{ props.parts.find((p) => p.id === line.part_id)?.part_number ?? '-' }}
                                             — {{ props.parts.find((p) => p.id === line.part_id)?.name ?? '-' }}
                                         </td>
-                                        <td class="py-2 pr-3 text-right font-mono">{{ line.quantity }}</td>
+                                        <td class="py-2 pr-3 text-right font-mono">{{ formatQty(line.quantity) }}</td>
                                         <td class="py-2 pr-3 text-center">{{ line.unit }}</td>
                                         <td class="py-2 pr-3 text-muted-foreground">{{ line.remarks || '-' }}</td>
                                         <td class="py-2 pr-3 text-center">

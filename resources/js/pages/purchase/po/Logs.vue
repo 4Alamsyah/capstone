@@ -5,6 +5,7 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type LogItem = {
@@ -120,7 +121,7 @@ const paginationText = computed(() => {
 
                         <div class="mt-3 space-y-1 text-sm">
                             <div v-for="item in log.items" :key="item.id" class="text-muted-foreground">
-                                {{ item.part_number }} - {{ item.part_name }} | +{{ item.quantity }} to {{ item.warehouse_code }} - {{ item.warehouse_name }}
+                                {{ item.part_number }} - {{ item.part_name }} | +{{ formatQty(item.quantity) }} to {{ item.warehouse_code }} - {{ item.warehouse_name }}
                             </div>
                         </div>
 
