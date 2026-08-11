@@ -326,7 +326,7 @@ const paginationText = computed(() => {
                                             <DropdownMenuSeparator v-if="hasDocumentActions(order)" />
                                             <DropdownMenuLabel v-if="hasDocumentActions(order)">Documents</DropdownMenuLabel>
                                             <DropdownMenuItem v-if="order.status >= 4" @select.prevent="openDeliveryOrderPdf(order)">
-                                                Download DO PDF
+                                                Download DN PDF
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
