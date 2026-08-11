@@ -1,22 +1,22 @@
 <?php
 
+use App\Http\Controllers\Accounting\AccountingAuditTrailController;
+use App\Http\Controllers\Accounting\ArAgingController;
+use App\Http\Controllers\Accounting\ChartOfAccountController;
+use App\Http\Controllers\Accounting\FiscalPeriodController;
+use App\Http\Controllers\Accounting\GlSettingController;
+use App\Http\Controllers\Accounting\JournalEntryController;
+use App\Http\Controllers\Accounting\JournalLineController;
+use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\BomController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOrderController;
-use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Accounting\AccountingAuditTrailController;
-use App\Http\Controllers\Accounting\ChartOfAccountController;
-use App\Http\Controllers\Accounting\FiscalPeriodController;
-use App\Http\Controllers\Accounting\JournalEntryController;
-use App\Http\Controllers\Accounting\ArAgingController;
-use App\Http\Controllers\Accounting\GlSettingController;
-use App\Http\Controllers\Accounting\JournalLineController;
-use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseVoucherController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ToolLoanController;
 use App\Http\Controllers\WorkCenterController;
@@ -174,6 +174,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/accounting/chart-of-accounts', [ChartOfAccountController::class, 'store'])->name('accounting.chart-of-accounts.store');
         Route::put('/accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'update'])->name('accounting.chart-of-accounts.update');
         Route::delete('/accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'destroy'])->name('accounting.chart-of-accounts.destroy');
+        Route::get('/accounting/chart-of-accounts/export', [ChartOfAccountController::class, 'export'])->name('accounting.chart-of-accounts.export');
+        Route::get('/accounting/chart-of-accounts/import-template', [ChartOfAccountController::class, 'importTemplate'])->name('accounting.chart-of-accounts.import-template');
+        Route::post('/accounting/chart-of-accounts/import', [ChartOfAccountController::class, 'import'])->name('accounting.chart-of-accounts.import');
 
         Route::get('/accounting/fiscal-periods', [FiscalPeriodController::class, 'index'])->name('accounting.fiscal-periods');
         Route::post('/accounting/fiscal-periods', [FiscalPeriodController::class, 'store'])->name('accounting.fiscal-periods.store');

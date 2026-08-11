@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,13 @@ type Account = {
     status: string;
 };
 
+type ImportResult = {
+    created: number;
+    updated: number;
+    errors: string[];
+    errorCount: number;
+};
+
 type Props = {
     accounts: Account[];
     filters: { search: string };
@@ -27,10 +34,12 @@ type Props = {
         from: number | null;
         to: number | null;
     };
+    importResult?: ImportResult | null;
 };
 
 const props = defineProps<Props>();
 const editingId = ref<number | null>(null);
+const importFileInput = ref<HTMLInputElement | null>(null);
 
 const breadcrumbItems: BreadcrumbItem[] = [
     { title: 'Accounting', href: '/accounting/general' },
@@ -54,6 +63,37 @@ const submitSearch = () => {
         preserveScroll: true,
         preserveState: true,
         replace: true,
+    });
+};
+
+const exportUrl = computed(() => {
+    const search = searchForm.search.trim();
+    return search ? `/accounting/chart-of-accounts/export?search=${encodeURIComponent(search)}` : '/accounting/chart-of-accounts/export';
+});
+
+const importForm = useForm<{ file: File | null }>({
+    file: null,
+});
+
+const onImportFileChange = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    importForm.file = target.files?.[0] ?? null;
+};
+
+const submitImport = () => {
+    if (!importForm.file) {
+        return;
+    }
+
+    importForm.post('/accounting/chart-of-accounts/import', {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            importForm.reset();
+            if (importFileInput.value) {
+                importFileInput.value.value = '';
+            }
+        },
     });
 };
 
@@ -144,6 +184,52 @@ const deleteAccount = (account: Account) => {
                         <Button type="button" variant="outline" @click="resetForm">Reset</Button>
                     </div>
                 </form>
+            </div>
+
+            <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-medium">Import / Export</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Download template, isi data akun, lalu import kembali. Export mengikuti filter pencarian yang aktif.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Button as="a" href="/accounting/chart-of-accounts/import-template" variant="outline" size="sm">
+                            Download Template
+                        </Button>
+                        <Button as="a" :href="exportUrl" variant="outline" size="sm">Export Excel</Button>
+
+                        <input
+                            ref="importFileInput"
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            class="hidden"
+                            @change="onImportFileChange"
+                        />
+                        <Button type="button" variant="outline" size="sm" @click="importFileInput?.click()">
+                            {{ importForm.file ? importForm.file.name : 'Pilih File' }}
+                        </Button>
+                        <Button type="button" size="sm" :disabled="!importForm.file || importForm.processing" @click="submitImport">
+                            {{ importForm.processing ? 'Mengimpor...' : 'Import' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <InputError :message="importForm.errors.file" />
+
+                <div v-if="importResult" class="mt-4 rounded-md border border-sidebar-border/60 bg-muted/30 p-3 text-sm">
+                    <p>Import selesai: <strong>{{ importResult.created }}</strong> akun baru, <strong>{{ importResult.updated }}</strong> diperbarui.</p>
+                    <div v-if="importResult.errors.length" class="mt-2">
+                        <p class="font-medium text-destructive">
+                            {{ importResult.errorCount }} baris dilewati{{ importResult.errorCount > importResult.errors.length ? ` (menampilkan ${importResult.errors.length} pertama)` : '' }}:
+                        </p>
+                        <ul class="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                            <li v-for="(message, index) in importResult.errors" :key="index">{{ message }}</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
