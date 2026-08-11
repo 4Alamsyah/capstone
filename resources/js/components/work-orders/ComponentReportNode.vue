@@ -71,7 +71,7 @@ defineProps<{
             <span v-if="node.is_sub_assembly"> | BOM: {{ node.bom_name }}</span>
             <span v-else-if="node.planning_strategy === 'stock_driven'">
                 | Stock saat ini: {{ node.total_stock }} / Safety stock: {{ node.safety_stock }}
-                — kalau kurang, WO replenishment akan dibuat otomatis
+                — kalau kurang, MO replenishment akan dibuat otomatis
             </span>
         </div>
 

@@ -26,9 +26,9 @@ const modules = [
         ],
     },
     {
-        title: 'Production (MO/Work Order)',
+        title: 'Production (MO/Manufacture Order)',
         points: [
-            'MO bisa dibuat manual dari menu Work Order.',
+            'MO bisa dibuat manual dari menu Manufacture Order.',
             'PO yang disetujui otomatis dapat membentuk MO jika item PO punya BOM aktif.',
             'Detail MO menampilkan sumber PO bila MO berasal dari approval PO.',
         ],
@@ -74,7 +74,7 @@ const detailedFlows = [
         steps: [
             'User Purchasing membuat PO dari menu Purchase dengan item part yang dibutuhkan.',
             'PO masuk status Pending Approval dan menunggu approval manajemen (GM/Director/Admin).',
-            'Ketika PO di-approve, sistem otomatis membuat MO (Work Order) untuk item yang memiliki BOM aktif.',
+            'Ketika PO di-approve, sistem otomatis membuat MO (Manufacture Order) untuk item yang memiliki BOM aktif.',
             'Nomor MO otomatis tampil di kolom Project pada List PO sebagai referensi proyek produksi.',
             'Tim warehouse/purchasing input Report Arrival untuk barang datang agar stok bertambah.',
             'Tim produksi lanjut menjalankan Report MO untuk konsumsi material sesuai proses produksi.',
@@ -83,7 +83,7 @@ const detailedFlows = [
     {
         title: 'Flow B: Manual MO (Tanpa PO)',
         steps: [
-            'Planner/PPIC membuat MO langsung dari menu Work Order (Create WO).',
+            'Planner/PPIC membuat MO langsung dari menu Manufacture Order (Create MO).',
             'MO ini tidak memiliki referensi PO sehingga Source PO pada detail MO akan kosong.',
             'MO diproses normal: update status, input report, dan konsumsi material dari stok.',
             'Semua aktivitas tetap tercatat di Log MO untuk keperluan traceability.',

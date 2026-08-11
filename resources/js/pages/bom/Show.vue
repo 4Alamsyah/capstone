@@ -505,7 +505,7 @@ const deleteBom = () => {
                                             v-model="editForm.planning_strategy"
                                             class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
-                                            <option value="order_oriented">Order Oriented — diproduksi inline saat WO di-report</option>
+                                            <option value="order_oriented">Order Oriented — diproduksi inline saat MO di-report</option>
                                             <option value="stock_driven">Stock Driven — konsumsi dari stock, auto-replenish kalau kurang</option>
                                         </select>
                                         <InputError :message="editForm.errors.planning_strategy" />

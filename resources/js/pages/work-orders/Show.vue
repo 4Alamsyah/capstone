@@ -47,7 +47,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Work Order', href: '/work-orders' },
+    { title: 'Manufacture Order', href: '/work-orders' },
     { title: props.workOrder.wo_number, href: `/work-orders/${props.workOrder.id}` },
 ];
 
@@ -86,7 +86,7 @@ const submitEdit = () => {
 };
 
 const deleteWo = () => {
-    if (!window.confirm(`Hapus Work Order ${props.workOrder.wo_number}?`)) {
+    if (!window.confirm(`Hapus Manufacture Order ${props.workOrder.wo_number}?`)) {
         return;
     }
 
@@ -95,7 +95,7 @@ const deleteWo = () => {
 </script>
 
 <template>
-    <Head :title="`WO – ${workOrder.wo_number}`" />
+    <Head :title="`MO – ${workOrder.wo_number}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4">
@@ -125,7 +125,7 @@ const deleteWo = () => {
                 <div class="rounded-lg border border-sidebar-border/70 p-4">
                     <dl class="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-3">
                         <div>
-                            <dt class="text-xs text-muted-foreground">WO Number</dt>
+                            <dt class="text-xs text-muted-foreground">MO Number</dt>
                             <dd class="font-mono font-semibold">{{ workOrder.wo_number }}</dd>
                         </div>
                         <div>
@@ -216,7 +216,7 @@ const deleteWo = () => {
             <!-- Edit mode -->
             <template v-else>
                 <form class="space-y-5 rounded-lg border border-sidebar-border/70 p-4" @submit.prevent="submitEdit">
-                    <h3 class="text-sm font-semibold">Edit Work Order</h3>
+                    <h3 class="text-sm font-semibold">Edit Manufacture Order</h3>
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="grid gap-2">

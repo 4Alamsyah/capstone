@@ -85,7 +85,7 @@ const paginationText = computed(() => {
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h3 class="text-sm font-semibold">MO Activity History</h3>
                     <form class="flex w-full flex-wrap items-center gap-2 sm:w-auto" @submit.prevent="submitSearch">
-                        <Input v-model="searchForm.search" placeholder="Search WO number, title, or description..." class="w-full sm:w-80" />
+                        <Input v-model="searchForm.search" placeholder="Search MO number, title, or description..." class="w-full sm:w-80" />
                         <Button type="submit" variant="outline">Search</Button>
                         <Button v-if="searchForm.search" type="button" variant="ghost" @click="clearSearch">Clear</Button>
                     </form>

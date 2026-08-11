@@ -77,7 +77,7 @@ withDefaults(
                     </h1>
 
                     <p class="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                        ERP ini membantu tim melihat status work order, persediaan, invoice, dan alur procurement secara real-time supaya keputusan lebih cepat dan akurat.
+                        ERP ini membantu tim melihat status manufacture order, persediaan, invoice, dan alur procurement secara real-time supaya keputusan lebih cepat dan akurat.
                     </p>
 
                     <div class="mt-8 flex flex-wrap gap-4">
@@ -137,7 +137,7 @@ withDefaults(
                         <div class="mt-5 grid gap-4">
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
-                                    <p class="text-sm text-slate-400">Work Orders</p>
+                                    <p class="text-sm text-slate-400">Manufacture Orders</p>
                                     <p class="mt-2 text-4xl font-bold text-white">128</p>
                                     <p class="mt-2 text-sm text-emerald-300">+14% vs last week</p>
                                 </div>

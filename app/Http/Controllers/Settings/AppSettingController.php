@@ -82,7 +82,7 @@ class AppSettingController extends Controller
     private function defaultWoFormat(): array
     {
         return [
-            'prefix' => 'WO',
+            'prefix' => 'MO',
             'separator' => '-',
             'components' => [
                 ['type' => 'prefix', 'format' => 'raw'],

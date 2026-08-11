@@ -49,7 +49,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Work Order', href: '/work-orders' },
+    { title: 'Manufacture Order', href: '/work-orders' },
 ];
 
 const statusColors: Record<string, string> = {
@@ -80,7 +80,7 @@ const clearSearch = () => {
 };
 
 const deleteWo = (wo: WorkOrderItem) => {
-    if (!window.confirm(`Hapus Work Order ${wo.wo_number}?`)) {
+    if (!window.confirm(`Hapus Manufacture Order ${wo.wo_number}?`)) {
         return;
     }
 
@@ -92,7 +92,7 @@ const paginationText = computed(() => {
         return 'No Manufacture Order found';
     }
 
-    return `Showing ${props.pagination.from}–${props.pagination.to} of ${props.pagination.total} work orders`;
+    return `Showing ${props.pagination.from}–${props.pagination.to} of ${props.pagination.total} manufacture orders`;
 });
 </script>
 
@@ -102,7 +102,7 @@ const paginationText = computed(() => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <Heading title="Manufacture Order" description="Buat dan pantau Work Order produksi." />
+                <Heading title="Manufacture Order" description="Buat dan pantau Manufacture Order produksi." />
                 <Button as-child>
                     <Link href="/work-orders/create">+ Create MO</Link>
                 </Button>
@@ -113,7 +113,7 @@ const paginationText = computed(() => {
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h3 class="text-sm font-semibold">Manufacture Order List</h3>
                     <form class="flex w-full flex-wrap items-center gap-2 sm:w-auto" @submit.prevent="submitSearch">
-                        <Input v-model="searchForm.search" placeholder="Search WO or product..." class="w-full sm:w-64" />
+                        <Input v-model="searchForm.search" placeholder="Search MO or product..." class="w-full sm:w-64" />
                         <select
                             v-model="searchForm.status"
                             class="rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

@@ -274,8 +274,8 @@ class WorkOrderController extends Controller
         $this->logWorkOrder(
             $wo,
             'created',
-            'Work order created',
-            'Work order created from selected BOM.',
+            'Manufacture order created',
+            'Manufacture order created from selected BOM.',
             [
                 'status' => $wo->status,
                 'quantity' => $wo->quantity,
@@ -349,11 +349,11 @@ class WorkOrderController extends Controller
 
         if ($shortfalls !== []) {
             $summary = collect($shortfalls)
-                ->map(fn (array $s): string => "{$s['part']->part_number} (WO {$s['work_order']->wo_number})")
+                ->map(fn (array $s): string => "{$s['part']->part_number} (MO {$s['work_order']->wo_number})")
                 ->implode(', ');
 
             throw ValidationException::withMessages([
-                'components' => "Stock tidak cukup untuk: {$summary}. WO replenishment sudah dibuat/tersedia - selesaikan WO tersebut dulu sebelum melanjutkan report ini.",
+                'components' => "Stock tidak cukup untuk: {$summary}. MO replenishment sudah dibuat/tersedia - selesaikan MO tersebut dulu sebelum melanjutkan report ini.",
             ]);
         }
 
@@ -384,7 +384,7 @@ class WorkOrderController extends Controller
             $this->logWorkOrder(
                 $workOrder,
                 'reported',
-                'Work order reported',
+                'Manufacture order reported',
                 sprintf(
                     'Status changed from %s to %s. Good qty: %s, reject qty: %s.',
                     WorkOrder::statusLabels()[$report->previous_status] ?? $report->previous_status,
@@ -463,7 +463,7 @@ class WorkOrderController extends Controller
             $this->logWorkOrder(
                 $workOrder,
                 'updated',
-                'Work order updated',
+                'Manufacture order updated',
                 'Updated fields: '.implode(', ', $changes),
                 [
                     'before' => $before,
@@ -852,9 +852,9 @@ class WorkOrderController extends Controller
         $this->logWorkOrder(
             $workOrder,
             'created',
-            'Replenishment WO auto-created',
+            'Replenishment MO auto-created',
             sprintf(
-                'WO dibuat otomatis karena stock %s - %s tidak cukup (kurang %d).',
+                'MO dibuat otomatis karena stock %s - %s tidak cukup (kurang %d).',
                 $part->part_number,
                 $part->name,
                 $shortfallQty,

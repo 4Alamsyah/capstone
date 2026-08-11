@@ -151,7 +151,7 @@ class User extends Authenticatable
             self::PERMISSION_MENU_DASHBOARD => 'View Dashboard menu',
             self::PERMISSION_MENU_PARTS => 'View Part menu',
             self::PERMISSION_MENU_SUPPLIERS => 'View Supplier menu',
-            self::PERMISSION_MENU_WORK_ORDERS => 'View Work Order menu',
+            self::PERMISSION_MENU_WORK_ORDERS => 'View Manufacture Order menu',
             self::PERMISSION_MENU_SALES => 'View Sales menu',
             self::PERMISSION_MENU_PURCHASE => 'View Purchase menu',
             self::PERMISSION_MENU_ACCOUNTING => 'View Accounting menu',

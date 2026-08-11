@@ -197,7 +197,7 @@ const submit = () => {
                         <h3 class="text-sm font-semibold">MO Summary</h3>
                         <dl class="mt-3 grid gap-3 text-sm">
                             <div>
-                                <dt class="text-xs text-muted-foreground">WO Number</dt>
+                                <dt class="text-xs text-muted-foreground">MO Number</dt>
                                 <dd class="font-mono font-semibold">{{ workOrder.wo_number }}</dd>
                             </div>
                             <div>

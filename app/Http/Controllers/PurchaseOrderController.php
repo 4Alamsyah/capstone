@@ -583,8 +583,8 @@ class PurchaseOrderController extends Controller
                 'work_order_id' => $workOrder->id,
                 'user_id' => $userId,
                 'log_type' => 'created',
-                'title' => 'Work order auto-created from PO',
-                'description' => 'Work order dibuat otomatis saat approval purchase order '.$purchaseOrder->po_number.'.',
+                'title' => 'Manufacture order auto-created from PO',
+                'description' => 'Manufacture order dibuat otomatis saat approval purchase order '.$purchaseOrder->po_number.'.',
                 'metadata' => [
                     'source' => 'purchase_order_approval',
                     'purchase_order_id' => $purchaseOrder->id,

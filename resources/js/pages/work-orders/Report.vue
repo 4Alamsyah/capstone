@@ -69,10 +69,10 @@ const clearSearch = () => {
 
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
-        return 'No work orders available for reporting';
+        return 'No manufacture orders available for reporting';
     }
 
-    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} work orders`;
+    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} manufacture orders`;
 });
 </script>
 
@@ -83,14 +83,14 @@ const paginationText = computed(() => {
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4">
             <Heading
                 title="Report MO"
-                description="Ubah status MO dan masuk ke halaman pelaporan hasil produksi per work order."
+                description="Ubah status MO dan masuk ke halaman pelaporan hasil produksi per manufacture order."
             />
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h3 class="text-sm font-semibold">Work Order To Report</h3>
+                    <h3 class="text-sm font-semibold">Manufacture Order To Report</h3>
                     <form class="flex w-full flex-wrap items-center gap-2 sm:w-auto" @submit.prevent="submitSearch">
-                        <Input v-model="searchForm.search" placeholder="Search WO or product..." class="w-full sm:w-64" />
+                        <Input v-model="searchForm.search" placeholder="Search MO or product..." class="w-full sm:w-64" />
                         <select
                             v-model="searchForm.status"
                             class="rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -107,7 +107,7 @@ const paginationText = computed(() => {
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
-                                <th class="py-2 pr-3">WO Number</th>
+                                <th class="py-2 pr-3">MO Number</th>
                                 <th class="py-2 pr-3">Product</th>
                                 <th class="py-2 pr-3">BOM</th>
                                 <th class="py-2 pr-3">Qty</th>

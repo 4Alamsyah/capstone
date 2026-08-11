@@ -55,7 +55,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Work Order', href: '/work-orders' },
+    { title: 'Manufacture Order', href: '/work-orders' },
     { title: 'Lead Time', href: '/work-orders/lead-time' },
 ];
 
@@ -88,10 +88,10 @@ const clearFilter = () => {
 
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
-        return 'No work order lead time data found';
+        return 'No manufacture order lead time data found';
     }
 
-    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} work orders`;
+    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} manufacture orders`;
 });
 
 const barWidthPercent = (workOrder: LeadTimeWorkOrder): number => {
@@ -135,7 +135,7 @@ const formatHours = (hours: number): string => {
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h3 class="text-sm font-semibold">Timeline Lead Time</h3>
                     <form class="flex w-full flex-wrap items-center gap-2 sm:w-auto" @submit.prevent="submitFilter">
-                        <Input v-model="filterForm.search" placeholder="Search WO / product..." class="w-full sm:w-64" />
+                        <Input v-model="filterForm.search" placeholder="Search MO / product..." class="w-full sm:w-64" />
                         <select
                             v-model="filterForm.status"
                             class="rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

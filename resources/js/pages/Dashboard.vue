@@ -192,13 +192,13 @@ onMounted(() => {
 				<div class="grid gap-4 lg:grid-cols-2">
 					<div class="rounded-lg border border-sidebar-border/70 p-4">
 						<div class="mb-4 flex items-center justify-between">
-							<h3 class="text-sm font-semibold">Status Work Order</h3>
+							<h3 class="text-sm font-semibold">Status Manufacture Order</h3>
 							<Link href="/work-orders" class="text-xs text-primary hover:underline">Lihat Modul</Link>
 						</div>
 
 						<div class="grid gap-3 sm:grid-cols-2">
 							<div class="rounded-md bg-muted/40 p-3">
-								<p class="text-xs text-muted-foreground">Total WO</p>
+								<p class="text-xs text-muted-foreground">Total MO</p>
 								<p class="mt-1 text-2xl font-semibold">{{ formatNumber(analytics.workOrders.total) }}</p>
 							</div>
 							<div class="rounded-md bg-muted/40 p-3">
@@ -255,7 +255,7 @@ onMounted(() => {
 				<div class="grid gap-4 lg:grid-cols-3">
 					<div class="rounded-lg border border-sidebar-border/70 p-4 lg:col-span-2">
 						<div class="mb-4 flex items-center justify-between">
-							<h3 class="text-sm font-semibold">Work Order Terbaru</h3>
+							<h3 class="text-sm font-semibold">Manufacture Order Terbaru</h3>
 							<Link href="/work-orders" class="text-xs text-primary hover:underline">Lihat Semua</Link>
 						</div>
 
@@ -263,14 +263,14 @@ onMounted(() => {
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
-										<th class="py-2 pr-3">WO Number</th>
+										<th class="py-2 pr-3">MO Number</th>
 										<th class="py-2 pr-3">BOM</th>
 										<th class="py-2">Status</th>
 									</tr>
 								</thead>
 								<tbody>
 									<tr v-if="analytics.workOrders.recentWorkOrders.length === 0">
-										<td colspan="3" class="py-6 text-center text-muted-foreground">Belum ada work order.</td>
+										<td colspan="3" class="py-6 text-center text-muted-foreground">Belum ada manufacture order.</td>
 									</tr>
 									<tr
 										v-for="item in analytics.workOrders.recentWorkOrders"

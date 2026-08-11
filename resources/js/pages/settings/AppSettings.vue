@@ -35,7 +35,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
     settings: () => ({
-        wo_format: { prefix: 'WO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
+        wo_format: { prefix: 'MO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
         po_format: { prefix: 'PO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
         co_format: { prefix: 'CO', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
         quotation_format: { prefix: 'QT', separator: '-', components: [{ type: 'prefix', format: 'raw' }, { type: 'year', format: 'YYYY' }, { type: 'month', format: 'MM' }, { type: 'sequential', format: '5' }] },
@@ -168,17 +168,17 @@ const submit = () => {
                 />
 
                 <form class="space-y-6" @submit.prevent="submit">
-                    <!-- Work Order Format settings -->
+                    <!-- Manufacture Order Format settings -->
                     <div class="rounded-lg border border-sidebar-border/70 p-4">
-                        <h3 class="mb-4 text-sm font-semibold">Work Order Format</h3>
+                        <h3 class="mb-4 text-sm font-semibold">Manufacture Order Format</h3>
 
                         <!-- Prefix Input -->
                         <div class="mb-6 grid gap-2 max-w-xs">
-                            <Label for="wo_prefix">WO Number Prefix</Label>
+                            <Label for="wo_prefix">MO Number Prefix</Label>
                             <Input
                                 id="wo_prefix"
                                 v-model="form.wo_format.prefix"
-                                placeholder="e.g. WO"
+                                placeholder="e.g. MO"
                                 class="uppercase"
                                 maxlength="20"
                             />

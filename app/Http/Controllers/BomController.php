@@ -166,7 +166,7 @@ class BomController extends Controller
     public function destroy(Request $request, Bom $bom): RedirectResponse
     {
         if ($bom->workOrders()->exists()) {
-            return back()->withErrors(['bom' => 'BOM ini tidak dapat dihapus karena masih digunakan oleh Work Order.']);
+            return back()->withErrors(['bom' => 'BOM ini tidak dapat dihapus karena masih digunakan oleh Manufacture Order.']);
         }
 
         $bom->delete();

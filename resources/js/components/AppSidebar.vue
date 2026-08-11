@@ -248,7 +248,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         if (item.title === 'Dashboard') return hasPermission('menu.dashboard');
         if (item.title === 'Part') return hasPermission('menu.parts');
         if (item.title === 'Supplier') return hasPermission('menu.suppliers');
-        if (item.title === 'Work Order')
+        if (item.title === 'Manufacturing')
             return hasPermission('menu.work_orders');
         if (item.title === 'Sales') return hasPermission('menu.sales');
         if (item.title === 'Purchase') return hasPermission('menu.purchase');

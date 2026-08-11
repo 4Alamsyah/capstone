@@ -22,7 +22,7 @@ type Props = {
 defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Work Order', href: '/work-orders' },
+    { title: 'Manufacture Order', href: '/work-orders' },
     { title: 'Create', href: '/work-orders/create' },
 ];
 
@@ -39,21 +39,21 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Create Work Order" />
+    <Head title="Create Manufacture Order" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4">
             <div class="flex items-center justify-between">
-                <Heading title="Create Work Order" description="Buat WO baru berdasarkan BOM yang sudah aktif." />
+                <Heading title="Create Manufacture Order" description="Buat MO baru berdasarkan BOM yang sudah aktif." />
                 <Button variant="outline" as-child>
                     <Link href="/work-orders">← Back</Link>
                 </Button>
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
-                <!-- Preview WO number -->
+                <!-- Preview MO number -->
                 <div class="mb-5 flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">WO Number (auto)</span>
+                    <span class="text-xs text-muted-foreground">MO Number (auto)</span>
                     <span class="font-mono text-sm font-semibold">{{ nextWoNumber }}</span>
                 </div>
 
@@ -101,7 +101,7 @@ const submit = () => {
                         <Button type="button" variant="outline" as-child>
                             <Link href="/work-orders">Cancel</Link>
                         </Button>
-                        <Button type="submit" :disabled="form.processing">Create Work Order</Button>
+                        <Button type="submit" :disabled="form.processing">Create Manufacture Order</Button>
                     </div>
                 </form>
             </div>

@@ -493,8 +493,8 @@ class CustomerOrderController extends Controller
                     'work_order_id' => $workOrder->id,
                     'user_id' => request()->user()?->id,
                     'log_type' => 'created',
-                    'title' => 'Work order auto-created',
-                    'description' => 'Work order dibuat otomatis saat konfirmasi customer order '.$customerOrder->co_number.'.',
+                    'title' => 'Manufacture order auto-created',
+                    'description' => 'Manufacture order dibuat otomatis saat konfirmasi customer order '.$customerOrder->co_number.'.',
                     'metadata' => [
                         'source' => 'customer_order_confirm',
                         'customer_order_id' => $customerOrder->id,
@@ -540,7 +540,7 @@ class CustomerOrderController extends Controller
             }
         });
 
-        $message = 'Customer order berhasil di-confirm dan work order otomatis dibuat.';
+        $message = 'Customer order berhasil di-confirm dan manufacture order otomatis dibuat.';
         if (isset($pv)) {
             $message .= ' Purchase Voucher otomatis dibuat untuk item dengan stok kurang.';
         }

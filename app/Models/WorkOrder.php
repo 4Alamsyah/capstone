@@ -70,7 +70,7 @@ class WorkOrder extends Model
     private static function defaultFormat(): array
     {
         return [
-            'prefix' => 'WO',
+            'prefix' => 'MO',
             'separator' => '-',
             'components' => [
                 ['type' => 'prefix', 'format' => 'raw'],

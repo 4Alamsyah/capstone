@@ -100,9 +100,9 @@ const setDefaultCurrency = (currency: CurrencyItem) => {
 
                             <div class="grid gap-2">
                                 <div class="grid gap-2">
-                                    <p class="text-sm font-medium">Work Order Format</p>
+                                    <p class="text-sm font-medium">Manufacture Order Format</p>
                                     <p class="text-xs text-muted-foreground">
-                                        WO format configuration is available in <a href="/settings/app" class="font-semibold text-blue-600 hover:underline">App Settings</a>
+                                        MO format configuration is available in <a href="/settings/app" class="font-semibold text-blue-600 hover:underline">App Settings</a>
                                     </p>
                                 </div>
                             </div>

@@ -7,7 +7,7 @@ class WoNumberService
     public static function generate(array $format, int $sequenceNumber): string
     {
         $parts = [];
-        $prefix = $format['prefix'] ?? 'WO';
+        $prefix = $format['prefix'] ?? 'MO';
 
         foreach ($format['components'] as $component) {
             $value = self::formatComponent($component, $sequenceNumber, $prefix);
@@ -32,7 +32,7 @@ class WoNumberService
     public static function stem(array $format): string
     {
         $parts = [];
-        $prefix = $format['prefix'] ?? 'WO';
+        $prefix = $format['prefix'] ?? 'MO';
 
         foreach ($format['components'] as $component) {
             if ($component['type'] === 'sequential') {
