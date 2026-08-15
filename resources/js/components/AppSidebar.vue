@@ -65,6 +65,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                     href: '/parts/register',
                 },
                 {
+                    title: 'Warehouse',
+                    href: '/parts/warehouses',
+                },
+                {
                     title: 'Stock',
                     href: '/parts/stock',
                 },

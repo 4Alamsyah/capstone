@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ type Props = {
     };
     components: ComponentRequirement[];
     warehouses: WarehouseOption[];
+    reportedGoodQuantity: string;
     recentReports: RecentReport[];
     statusLabels: Record<string, string>;
 };
@@ -78,14 +79,60 @@ const initialComponents: Record<number, ComponentInput> = {};
 seedComponents(props.components, initialComponents);
 
 const form = useForm({
-    new_status: props.workOrder.status,
-    good_quantity: props.workOrder.quantity,
+    good_quantity: formatQty(props.workOrder.quantity) || '0',
     reject_quantity: '0',
     notes: '',
     components: initialComponents,
 });
 
 const formErrors = computed(() => form.errors as unknown as Partial<Record<string, string>>);
+
+// Keep material (and sub-assembly production) quantities proportional to the
+// reported Good Quantity of the part, using each component's BOM ratio.
+const syncComponentQuantities = (nodes: ComponentRequirement[], parentQuantity: number) => {
+    nodes.forEach((node) => {
+        const ratio = parseFloat(node.bom_quantity) || 0;
+        const quantity = Math.max(0, Math.round(parentQuantity * ratio));
+        const input = form.components[node.bom_item_id];
+
+        if (input) {
+            if (node.is_sub_assembly) {
+                input.good_quantity = String(quantity);
+            } else {
+                input.quantity = String(quantity);
+            }
+        }
+
+        syncComponentQuantities(node.children, quantity);
+    });
+};
+
+watch(
+    () => form.good_quantity,
+    (value) => {
+        const parsed = parseFloat(value);
+        syncComponentQuantities(props.components, Number.isFinite(parsed) ? parsed : 0);
+    },
+);
+
+// Status is derived automatically from cumulative Good Quantity vs the planned
+// quantity, mirroring the backend's own calculation on submit.
+const previewStatus = computed(() => {
+    const previousGoodQuantity = parseFloat(props.reportedGoodQuantity) || 0;
+    const currentGoodQuantity = parseFloat(form.good_quantity) || 0;
+    const totalGoodQuantity = previousGoodQuantity + currentGoodQuantity;
+    const plannedQuantity = parseFloat(props.workOrder.quantity) || 0;
+
+    if (plannedQuantity > 0 && totalGoodQuantity >= plannedQuantity) {
+        return 'completed';
+    }
+
+    if (totalGoodQuantity > 0) {
+        return 'in_progress';
+    }
+
+    return props.workOrder.status;
+});
 
 const submit = () => {
     form.post(`/work-orders/${props.workOrder.id}/report`);
@@ -123,15 +170,13 @@ const submit = () => {
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="grid gap-2">
-                            <Label for="new_status">New Status</Label>
-                            <select
-                                id="new_status"
-                                v-model="form.new_status"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                                <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
-                            </select>
-                            <InputError :message="form.errors.new_status" />
+                            <Label>New Status</Label>
+                            <div class="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+                                {{ statusLabels[previewStatus] ?? previewStatus }}
+                            </div>
+                            <p class="text-xs text-muted-foreground">
+                                Status mengikuti akumulasi Good Quantity terhadap Planned Qty secara otomatis.
+                            </p>
                         </div>
 
                         <div class="grid gap-2">

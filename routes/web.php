@@ -20,6 +20,7 @@ use App\Http\Controllers\PurchaseVoucherController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ToolLoanController;
+use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WorkCenterController;
 use App\Http\Controllers\WorkOrderController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/stock', [PartController::class, 'stock'])->name('parts.stock');
         Route::post('/stock/tool-loans', [ToolLoanController::class, 'store'])->name('parts.stock.tool-loans.store');
         Route::patch('/stock/tool-loans/{toolLoan}', [ToolLoanController::class, 'update'])->name('parts.stock.tool-loans.update');
+
+        Route::get('/warehouses', [WarehouseController::class, 'index'])->name('parts.warehouses.index');
+        Route::post('/warehouses', [WarehouseController::class, 'store'])->name('parts.warehouses.store');
+        Route::post('/warehouses/quick-create', [WarehouseController::class, 'quickStore'])->name('parts.warehouses.quick-create');
+        Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('parts.warehouses.update');
+        Route::delete('/warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('parts.warehouses.destroy');
     });
 
     Route::middleware('permission:menu.suppliers')->group(function (): void {

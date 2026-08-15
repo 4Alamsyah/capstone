@@ -318,6 +318,7 @@ class WorkOrderController extends Controller
             ],
             'components' => $componentRequirements,
             'warehouses' => Warehouse::query()->orderBy('code')->get(['id', 'code', 'name']),
+            'reportedGoodQuantity' => (string) $workOrder->reports->sum('good_quantity'),
             'recentReports' => $workOrder->reports->take(10)->map(fn (WorkOrderReport $report): array => [
                 'id' => $report->id,
                 'previous_status' => $report->previous_status,
@@ -358,11 +359,22 @@ class WorkOrderController extends Controller
         }
 
         DB::transaction(function () use ($request, $validated, $workOrder): void {
+            $previousStatus = $workOrder->status;
+            $reportedGoodQuantity = (float) $workOrder->reports()->sum('good_quantity');
+            $totalGoodQuantity = $reportedGoodQuantity + (float) $validated['good_quantity'];
+            $plannedQuantity = (float) $workOrder->quantity;
+
+            $newStatus = match (true) {
+                $plannedQuantity > 0 && $totalGoodQuantity >= $plannedQuantity => 'completed',
+                $totalGoodQuantity > 0 => 'in_progress',
+                default => $previousStatus,
+            };
+
             $report = WorkOrderReport::create([
                 'work_order_id' => $workOrder->id,
                 'reported_by' => $request->user()?->id,
-                'previous_status' => $workOrder->status,
-                'new_status' => $validated['new_status'],
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatus,
                 'good_quantity' => $validated['good_quantity'],
                 'reject_quantity' => $validated['reject_quantity'] ?? 0,
                 'notes' => $validated['notes'] ?? null,
@@ -377,7 +389,7 @@ class WorkOrderController extends Controller
             );
 
             $workOrder->update([
-                'status' => $validated['new_status'],
+                'status' => $newStatus,
                 'notes' => $validated['notes'] ?? $workOrder->notes,
             ]);
 

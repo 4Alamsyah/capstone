@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import axios from 'axios';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import WarehouseCombobox from '@/components/WarehouseCombobox.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -32,6 +42,8 @@ const supplierSelectRef = ref<HTMLSelectElement | null>(null);
 const selectedSupplierIds = ref<number[]>([]);
 let supplierSelectJQuery: any = null;
 
+const warehouseOptions = ref<WarehouseOption[]>([...props.warehouses]);
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Register Part',
@@ -48,14 +60,12 @@ const form = useForm({
     selling_price: 0,
     safety_stock: 0,
     suppliers: [] as Array<{ supplier_id: number; purchase_price: number }>,
-    stocks: props.warehouses.length
-        ? [
-              {
-                  warehouse_id: props.warehouses[0].id,
-                  quantity: 0,
-              },
-          ]
-        : [],
+    stocks: [
+        {
+            warehouse_id: warehouseOptions.value[0]?.id ?? 0,
+            quantity: 0,
+        },
+    ],
 });
 
 const selectedSuppliers = computed(() => {
@@ -148,12 +158,8 @@ onBeforeUnmount(() => {
 });
 
 const addStockRow = () => {
-    if (!props.warehouses.length) {
-        return;
-    }
-
     form.stocks.push({
-        warehouse_id: props.warehouses[0].id,
+        warehouse_id: warehouseOptions.value[0]?.id ?? 0,
         quantity: 0,
     });
 };
@@ -164,6 +170,63 @@ const removeStockRow = (index: number) => {
 
 const submit = () => {
     form.post('/parts');
+};
+
+const warehouseDialogOpen = ref(false);
+const pendingStockIndex = ref<number | null>(null);
+const quickWarehouseForm = reactive({
+    code: '',
+    name: '',
+    location: '',
+});
+const quickWarehouseErrors = ref<Record<string, string[]>>({});
+const quickWarehouseProcessing = ref(false);
+const quickWarehouseGeneralError = ref('');
+
+const closeWarehouseDialog = () => {
+    warehouseDialogOpen.value = false;
+    pendingStockIndex.value = null;
+    quickWarehouseErrors.value = {};
+    quickWarehouseGeneralError.value = '';
+};
+
+const requestCreateWarehouse = (rowIndex: number, typedName: string) => {
+    pendingStockIndex.value = rowIndex;
+    quickWarehouseForm.code = '';
+    quickWarehouseForm.name = typedName;
+    quickWarehouseForm.location = '';
+    quickWarehouseErrors.value = {};
+    quickWarehouseGeneralError.value = '';
+    warehouseDialogOpen.value = true;
+};
+
+const submitQuickWarehouse = async () => {
+    quickWarehouseProcessing.value = true;
+    quickWarehouseErrors.value = {};
+    quickWarehouseGeneralError.value = '';
+
+    try {
+        const response = await axios.post('/parts/warehouses/quick-create', quickWarehouseForm, {
+            headers: { Accept: 'application/json' },
+        });
+
+        warehouseOptions.value.push(response.data);
+
+        if (pendingStockIndex.value !== null) {
+            form.stocks[pendingStockIndex.value].warehouse_id = response.data.id;
+        }
+
+        warehouseDialogOpen.value = false;
+        pendingStockIndex.value = null;
+    } catch (error: any) {
+        if (error.response?.status === 422) {
+            quickWarehouseErrors.value = error.response.data.errors ?? {};
+        } else {
+            quickWarehouseGeneralError.value = 'Sesi habis atau terjadi kesalahan, silakan muat ulang halaman.';
+        }
+    } finally {
+        quickWarehouseProcessing.value = false;
+    }
 };
 </script>
 
@@ -308,13 +371,13 @@ const submit = () => {
                 <div class="space-y-3 rounded-lg border border-sidebar-border/70 p-4">
                     <div class="flex items-center justify-between gap-3">
                         <h3 class="text-sm font-semibold">Initial Stock</h3>
-                        <Button type="button" variant="outline" :disabled="!warehouses.length" @click="addStockRow">
+                        <Button type="button" variant="outline" @click="addStockRow">
                             Add Warehouse Stock
                         </Button>
                     </div>
 
-                    <p v-if="!warehouses.length" class="text-sm text-muted-foreground">
-                        Belum ada warehouse. Tambahkan warehouse terlebih dahulu di database.
+                    <p v-if="!warehouseOptions.length" class="text-sm text-muted-foreground">
+                        Belum ada warehouse. Ketik nama warehouse di kolom pencarian di bawah untuk menambahkannya.
                     </p>
 
                     <div
@@ -324,15 +387,12 @@ const submit = () => {
                     >
                         <div class="grid gap-2">
                             <Label :for="`warehouse-${index}`">Warehouse</Label>
-                            <select
+                            <WarehouseCombobox
                                 :id="`warehouse-${index}`"
-                                v-model.number="stock.warehouse_id"
-                                class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                                <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-                                    {{ warehouse.code }} - {{ warehouse.name }}
-                                </option>
-                            </select>
+                                v-model="stock.warehouse_id"
+                                :warehouses="warehouseOptions"
+                                @create-requested="(name) => requestCreateWarehouse(index, name)"
+                            />
                             <InputError :message="form.errors[`stocks.${index}.warehouse_id`]" />
                         </div>
 
@@ -360,6 +420,49 @@ const submit = () => {
                     <Button type="submit" :disabled="form.processing">Save Part</Button>
                 </div>
             </form>
+
+            <Dialog
+                :open="warehouseDialogOpen"
+                @update:open="(open) => (open ? (warehouseDialogOpen = true) : closeWarehouseDialog())"
+            >
+                <DialogContent class="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Add Warehouse</DialogTitle>
+                        <DialogDescription>
+                            Tambahkan warehouse baru, langsung terpilih untuk baris stok ini.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form class="grid gap-4" @submit.prevent="submitQuickWarehouse">
+                        <p v-if="quickWarehouseGeneralError" class="text-sm text-destructive">
+                            {{ quickWarehouseGeneralError }}
+                        </p>
+
+                        <div class="grid gap-2">
+                            <Label for="quick-warehouse-code">Code</Label>
+                            <Input id="quick-warehouse-code" v-model="quickWarehouseForm.code" placeholder="WH-JKT" />
+                            <InputError :message="quickWarehouseErrors.code?.[0]" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="quick-warehouse-name">Name</Label>
+                            <Input id="quick-warehouse-name" v-model="quickWarehouseForm.name" placeholder="Warehouse Jakarta" />
+                            <InputError :message="quickWarehouseErrors.name?.[0]" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="quick-warehouse-location">Location</Label>
+                            <Input id="quick-warehouse-location" v-model="quickWarehouseForm.location" placeholder="Opsional" />
+                            <InputError :message="quickWarehouseErrors.location?.[0]" />
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" @click="closeWarehouseDialog">Cancel</Button>
+                            <Button type="submit" :disabled="quickWarehouseProcessing">Save Warehouse</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     </AppLayout>
 </template>
@@ -372,38 +475,74 @@ const submit = () => {
 :deep(.select2-container--default .select2-selection--multiple) {
     min-height: 38px;
     border-radius: 0.375rem;
-    border: 1px solid hsl(var(--input));
+    border: 1px solid var(--input);
     background: transparent;
     padding: 2px 8px;
 }
 
 :deep(.select2-container--default.select2-container--focus .select2-selection--multiple) {
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 1px hsl(var(--ring));
+    border-color: var(--ring);
+    box-shadow: 0 0 0 1px var(--ring);
 }
 
 :deep(.select2-container--default .select2-selection--multiple .select2-selection__choice) {
     border: 0;
     border-radius: 0.375rem;
-    background: hsl(var(--muted));
-    color: hsl(var(--foreground));
+    background: var(--muted);
+    color: var(--foreground);
     padding: 2px 8px;
     margin-top: 4px;
 }
 
 :deep(.select2-container--default .select2-selection--multiple .select2-selection__choice__remove) {
     margin-right: 6px;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
+}
+</style>
+
+<!--
+    Select2 renders its open dropdown in a floating container appended near
+    the end of <body>, outside this component's scoped DOM subtree, so
+    Vue's scoped `:deep()` selectors never match it. These rules must stay
+    global (unscoped). `!important` matches select2's own higher-specificity
+    `.select2-container--default ...` base rules regardless of CSS load order.
+-->
+<style>
+.select2-dropdown {
+    background: var(--popover) !important;
+    color: var(--popover-foreground) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0.5rem !important;
+    box-shadow:
+        0 10px 15px -3px rgb(0 0 0 / 0.1),
+        0 4px 6px -4px rgb(0 0 0 / 0.1);
+    overflow: hidden;
 }
 
-:deep(.select2-dropdown) {
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.5rem;
-    background: hsl(var(--background));
+.select2-search--dropdown {
+    padding: 0.5rem !important;
 }
 
-:deep(.select2-results__option--highlighted[aria-selected]) {
-    background: hsl(var(--accent)) !important;
-    color: hsl(var(--accent-foreground)) !important;
+.select2-search--dropdown .select2-search__field {
+    border: 1px solid var(--input) !important;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--foreground);
+    padding: 0.375rem 0.5rem;
+    outline: none;
+}
+
+.select2-results__option {
+    color: var(--popover-foreground) !important;
+    padding: 0.5rem 0.75rem !important;
+}
+
+.select2-results__option--selected {
+    background: var(--muted) !important;
+}
+
+.select2-results__option--highlighted[aria-selected] {
+    background: var(--accent) !important;
+    color: var(--accent-foreground) !important;
 }
 </style>
