@@ -7,6 +7,7 @@ use App\Http\Controllers\Accounting\FiscalPeriodController;
 use App\Http\Controllers\Accounting\GlSettingController;
 use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\JournalLineController;
+use App\Http\Controllers\Accounting\JournalReportController;
 use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\BomController;
 use App\Http\Controllers\CustomerController;
@@ -193,6 +194,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/accounting/journal-lines', [JournalLineController::class, 'store'])->name('accounting.journal-lines.store');
         Route::put('/accounting/journal-lines/{journalLine}', [JournalLineController::class, 'update'])->name('accounting.journal-lines.update');
         Route::delete('/accounting/journal-lines/{journalLine}', [JournalLineController::class, 'destroy'])->name('accounting.journal-lines.destroy');
+
+        Route::get('/accounting/journal-report', [JournalReportController::class, 'index'])->name('accounting.journal-report');
+        Route::get('/accounting/journal-report/export', [JournalReportController::class, 'export'])->name('accounting.journal-report.export');
+        Route::get('/accounting/journal-report/pdf', [JournalReportController::class, 'pdf'])->name('accounting.journal-report.pdf');
 
         Route::get('/accounting/audit-trails', [AccountingAuditTrailController::class, 'index'])->name('accounting.audit-trails');
         Route::delete('/accounting/audit-trails/{accountingAuditTrail}', [AccountingAuditTrailController::class, 'destroy'])->name('accounting.audit-trails.destroy');

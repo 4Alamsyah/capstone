@@ -26,8 +26,8 @@ class UpdateSupplierRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255', Rule::unique('suppliers', 'name')->ignore($supplierId)],
-            'phone' => ['nullable', 'string', 'max:100'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:100', 'regex:/^[0-9+\-() ]+$/'],
+            'email' => ['nullable', 'email', 'max:255', 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
             'address' => ['nullable', 'string'],
         ];
     }

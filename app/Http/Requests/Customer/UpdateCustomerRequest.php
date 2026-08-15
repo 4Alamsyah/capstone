@@ -19,8 +19,8 @@ class UpdateCustomerRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:100'],
+            'email' => ['nullable', 'email', 'max:255', 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
+            'phone' => ['nullable', 'string', 'max:100', 'regex:/^[0-9+\-() ]+$/'],
             'address' => ['nullable', 'string', 'max:1000'],
             'shipping_address' => ['nullable', 'string', 'max:1000'],
             'payment_terms' => ['nullable', 'string', 'max:100'],

@@ -154,7 +154,7 @@ const deleteSupplier = (supplier: SupplierItem) => {
 
                         <div class="grid gap-2">
                             <Label for="phone">Phone</Label>
-                            <Input id="phone" v-model="form.phone" placeholder="No telepon" />
+                            <Input id="phone" v-model="form.phone" type="tel" pattern="[0-9+\-() ]+" placeholder="No telepon" />
                             <InputError :message="form.errors.phone" />
                         </div>
 
@@ -202,7 +202,7 @@ const deleteSupplier = (supplier: SupplierItem) => {
 
                             <div class="grid gap-2">
                                 <Label for="edit-phone">Phone</Label>
-                                <Input id="edit-phone" v-model="editForm.phone" />
+                                <Input id="edit-phone" v-model="editForm.phone" type="tel" pattern="[0-9+\-() ]+" />
                                 <InputError :message="editForm.errors.phone" />
                             </div>
 

@@ -62,6 +62,16 @@ const breadcrumbItems: BreadcrumbItem[] = [
                 </Link>
 
                 <Link
+                    href="/accounting/journal-report"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">Report Jurnal</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        Laporan jurnal umum kronologis dengan filter tanggal, periode, status, dan akun.
+                    </p>
+                </Link>
+
+                <Link
                     href="/accounting/journal-lines"
                     class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
                 >
