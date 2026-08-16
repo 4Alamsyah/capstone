@@ -257,6 +257,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                             title: 'Journal Lines',
                             href: '/accounting/journal-lines',
                         },
+                        {
+                            title: 'Profit & Loss',
+                            href: '/accounting/profit-loss',
+                        },
                     ],
                 },
                 {

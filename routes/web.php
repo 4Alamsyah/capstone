@@ -10,6 +10,7 @@ use App\Http\Controllers\Accounting\GlSettingController;
 use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\JournalLineController;
 use App\Http\Controllers\Accounting\JournalReportController;
+use App\Http\Controllers\Accounting\ProfitLossController;
 use App\Http\Controllers\Accounting\TaxSettingController;
 use App\Http\Controllers\ApInvoiceController;
 use App\Http\Controllers\BomController;
@@ -225,6 +226,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounting/journal-report', [JournalReportController::class, 'index'])->name('accounting.journal-report');
         Route::get('/accounting/journal-report/export', [JournalReportController::class, 'export'])->name('accounting.journal-report.export');
         Route::get('/accounting/journal-report/pdf', [JournalReportController::class, 'pdf'])->name('accounting.journal-report.pdf');
+
+        Route::get('/accounting/profit-loss', [ProfitLossController::class, 'index'])->name('accounting.profit-loss');
 
         Route::get('/accounting/audit-trails', [AccountingAuditTrailController::class, 'index'])->name('accounting.audit-trails');
         Route::delete('/accounting/audit-trails/{accountingAuditTrail}', [AccountingAuditTrailController::class, 'destroy'])->name('accounting.audit-trails.destroy');
