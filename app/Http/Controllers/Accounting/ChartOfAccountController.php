@@ -20,7 +20,7 @@ use Throwable;
 
 class ChartOfAccountController extends Controller
 {
-    private const TEMPLATE_HEADERS = ['Code', 'Name', 'Category', 'Status'];
+    private const TEMPLATE_HEADERS = ['Code', 'Name', 'Type', 'Category', 'Status'];
 
     public function index(Request $request): Response
     {
@@ -44,8 +44,10 @@ class ChartOfAccountController extends Controller
                 'code' => $account->code,
                 'name' => $account->name,
                 'category' => $account->category,
+                'account_type' => $account->account_type,
                 'status' => $account->status,
             ])->values(),
+            'typeLabels' => ChartOfAccount::typeLabels(),
             'filters' => ['search' => $search],
             'pagination' => [
                 'current_page' => $accounts->currentPage(),
@@ -64,6 +66,7 @@ class ChartOfAccountController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:chart_of_accounts,code'],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
+            'account_type' => ['required', 'string', 'in:'.implode(',', array_keys(ChartOfAccount::typeLabels()))],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
 
@@ -79,6 +82,7 @@ class ChartOfAccountController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:chart_of_accounts,code,'.$chartOfAccount->id],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
+            'account_type' => ['required', 'string', 'in:'.implode(',', array_keys(ChartOfAccount::typeLabels()))],
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
 
@@ -109,18 +113,19 @@ class ChartOfAccountController extends Controller
                 });
             })
             ->orderBy('code')
-            ->get(['code', 'name', 'category', 'status']);
+            ->get(['code', 'name', 'category', 'account_type', 'status']);
 
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Chart of Accounts');
         $sheet->fromArray(self::TEMPLATE_HEADERS, null, 'A1');
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
 
         $sheet->fromArray(
             $accounts->map(fn (ChartOfAccount $account): array => [
                 $account->code,
                 $account->name,
+                $account->account_type,
                 $account->category,
                 $account->status,
             ])->all(),
@@ -128,7 +133,7 @@ class ChartOfAccountController extends Controller
             'A2'
         );
 
-        foreach (['A', 'B', 'C', 'D'] as $column) {
+        foreach (['A', 'B', 'C', 'D', 'E'] as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
@@ -141,15 +146,27 @@ class ChartOfAccountController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Template');
         $sheet->fromArray(self::TEMPLATE_HEADERS, null, 'A1');
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
 
         $sheet->fromArray([
-            ['1000-01', 'Kas Kecil', 'Asset', 'active'],
-            ['4000-01', 'Pendapatan Jasa', 'Revenue', 'active'],
+            ['1000-01', 'Kas Kecil', 'asset', 'Current Asset', 'active'],
+            ['4000-01', 'Pendapatan Jasa', 'revenue', 'Revenue', 'active'],
         ], null, 'A2');
 
+        $typeKeys = implode(',', array_keys(ChartOfAccount::typeLabels()));
+
         for ($row = 2; $row <= 200; $row++) {
-            $statusValidation = $sheet->getCell("D{$row}")->getDataValidation();
+            $typeValidation = $sheet->getCell("C{$row}")->getDataValidation();
+            $typeValidation->setType(DataValidation::TYPE_LIST);
+            $typeValidation->setErrorStyle(DataValidation::STYLE_STOP);
+            $typeValidation->setAllowBlank(true);
+            $typeValidation->setShowDropDown(true);
+            $typeValidation->setShowErrorMessage(true);
+            $typeValidation->setErrorTitle('Type tidak valid');
+            $typeValidation->setError("Gunakan salah satu: {$typeKeys}.");
+            $typeValidation->setFormula1('"'.$typeKeys.'"');
+
+            $statusValidation = $sheet->getCell("E{$row}")->getDataValidation();
             $statusValidation->setType(DataValidation::TYPE_LIST);
             $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
             $statusValidation->setAllowBlank(true);
@@ -160,7 +177,7 @@ class ChartOfAccountController extends Controller
             $statusValidation->setFormula1('"active,inactive"');
         }
 
-        foreach (['A', 'B', 'C', 'D'] as $column) {
+        foreach (['A', 'B', 'C', 'D', 'E'] as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
@@ -196,8 +213,9 @@ class ChartOfAccountController extends Controller
 
                 $code = trim((string) ($row[0] ?? ''));
                 $name = trim((string) ($row[1] ?? ''));
-                $category = trim((string) ($row[2] ?? ''));
-                $status = strtolower(trim((string) ($row[3] ?? '')) ?: 'active');
+                $accountType = strtolower(trim((string) ($row[2] ?? '')));
+                $category = trim((string) ($row[3] ?? ''));
+                $status = strtolower(trim((string) ($row[4] ?? '')) ?: 'active');
 
                 if ($code === '' && $name === '' && $category === '') {
                     continue;
@@ -211,6 +229,13 @@ class ChartOfAccountController extends Controller
 
                 if ($name === '') {
                     $errors[] = "Baris {$lineNumber}: Name wajib diisi.";
+
+                    continue;
+                }
+
+                if (! array_key_exists($accountType, ChartOfAccount::typeLabels())) {
+                    $validTypes = implode('/', array_keys(ChartOfAccount::typeLabels()));
+                    $errors[] = "Baris {$lineNumber}: Type '{$accountType}' tidak valid (gunakan {$validTypes}).";
 
                     continue;
                 }
@@ -241,6 +266,7 @@ class ChartOfAccountController extends Controller
                     $account->update([
                         'name' => $name,
                         'category' => $category,
+                        'account_type' => $accountType,
                         'status' => $status,
                     ]);
                     AccountingAuditLogger::record('Updated chart of account via import', $account, $account->code);
@@ -250,6 +276,7 @@ class ChartOfAccountController extends Controller
                         'code' => $code,
                         'name' => $name,
                         'category' => $category,
+                        'account_type' => $accountType,
                         'status' => $status,
                     ]);
                     AccountingAuditLogger::record('Created chart of account via import', $account, $account->code);

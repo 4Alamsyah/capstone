@@ -3,6 +3,7 @@
 use App\Http\Controllers\Accounting\AccountingAuditTrailController;
 use App\Http\Controllers\Accounting\ApAgingController;
 use App\Http\Controllers\Accounting\ArAgingController;
+use App\Http\Controllers\Accounting\BalanceSheetController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
 use App\Http\Controllers\Accounting\FiscalPeriodController;
 use App\Http\Controllers\Accounting\GlSettingController;
@@ -237,6 +238,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounting/ar-aging', [ArAgingController::class, 'index'])->name('accounting.ar-aging');
 
         Route::get('/accounting/ap-aging', [ApAgingController::class, 'index'])->name('accounting.ap-aging');
+
+        Route::get('/accounting/balance-sheet', [BalanceSheetController::class, 'index'])->name('accounting.balance-sheet');
     });
 });
 

@@ -22,6 +22,7 @@ type Account = {
     code: string;
     name: string;
     category: string;
+    account_type: string | null;
     status: string;
 };
 
@@ -34,6 +35,7 @@ type ImportResult = {
 
 type Props = {
     accounts: Account[];
+    typeLabels: Record<string, string>;
     filters: { search: string };
     pagination: {
         current_page: number;
@@ -59,6 +61,7 @@ const form = useForm({
     code: '',
     name: '',
     category: '',
+    account_type: '',
     status: 'active',
     search: props.filters.search ?? '',
 });
@@ -132,6 +135,7 @@ const editAccount = (account: Account) => {
     form.code = account.code;
     form.name = account.name;
     form.category = account.category;
+    form.account_type = account.account_type ?? '';
     form.status = account.status;
     form.clearErrors();
     accountDialogOpen.value = true;
@@ -297,6 +301,7 @@ const deleteAccount = (account: Account) => {
                             <tr>
                                 <th class="px-4 py-3 font-medium">Code</th>
                                 <th class="px-4 py-3 font-medium">Name</th>
+                                <th class="px-4 py-3 font-medium">Type</th>
                                 <th class="px-4 py-3 font-medium">Category</th>
                                 <th class="px-4 py-3 font-medium">Status</th>
                                 <th class="px-4 py-3 font-medium">Action</th>
@@ -312,6 +317,14 @@ const deleteAccount = (account: Account) => {
                                     {{ account.code }}
                                 </td>
                                 <td class="px-4 py-3">{{ account.name }}</td>
+                                <td class="px-4 py-3">
+                                    <span v-if="account.account_type" class="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                        {{ props.typeLabels[account.account_type] ?? account.account_type }}
+                                    </span>
+                                    <span v-else class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                        Unclassified
+                                    </span>
+                                </td>
                                 <td class="px-4 py-3">
                                     {{ account.category }}
                                 </td>
@@ -384,11 +397,24 @@ const deleteAccount = (account: Account) => {
                         </div>
 
                         <div class="grid gap-2">
+                            <Label for="account_type">Type</Label>
+                            <select
+                                id="account_type"
+                                v-model="form.account_type"
+                                class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                            >
+                                <option value="" disabled>- pilih type -</option>
+                                <option v-for="(label, key) in typeLabels" :key="key" :value="key">{{ label }}</option>
+                            </select>
+                            <InputError :message="form.errors.account_type" />
+                        </div>
+
+                        <div class="grid gap-2">
                             <Label for="category">Category</Label>
                             <Input
                                 id="category"
                                 v-model="form.category"
-                                placeholder="Asset"
+                                placeholder="Current Asset"
                             />
                             <InputError :message="form.errors.category" />
                         </div>

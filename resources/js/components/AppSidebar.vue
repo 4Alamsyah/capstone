@@ -278,6 +278,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                     href: '/accounting/ar-aging',
                     items: [
                         {
+                            title: 'Balance Sheet',
+                            href: '/accounting/balance-sheet',
+                        },
+                        {
                             title: 'AR Aging',
                             href: '/accounting/ar-aging',
                         },
