@@ -40,4 +40,9 @@ class Supplier extends Model
             ->withPivot('purchase_price')
             ->withTimestamps();
     }
+
+    public function apInvoices(): HasMany
+    {
+        return $this->hasMany(ApInvoice::class);
+    }
 }

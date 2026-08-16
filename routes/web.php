@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Accounting\AccountingAuditTrailController;
+use App\Http\Controllers\Accounting\ApAgingController;
 use App\Http\Controllers\Accounting\ArAgingController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
 use App\Http\Controllers\Accounting\FiscalPeriodController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\JournalLineController;
 use App\Http\Controllers\Accounting\JournalReportController;
 use App\Http\Controllers\Accounting\TaxSettingController;
+use App\Http\Controllers\ApInvoiceController;
 use App\Http\Controllers\BomController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerOrderController;
@@ -173,6 +175,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('purchase.voucher.reject');
         Route::post('/voucher/{purchaseVoucher}/convert-to-po', [PurchaseVoucherController::class, 'convertToPo'])->name('purchase.voucher.convert-to-po');
         Route::delete('/voucher/{purchaseVoucher}', [PurchaseVoucherController::class, 'destroy'])->name('purchase.voucher.destroy');
+
+        // AP (Accounts Payable) routes — order matters: specific paths before wildcard
+        Route::get('/ap/invoices', [ApInvoiceController::class, 'index'])->name('purchase.ap.invoices.index');
+        Route::get('/ap/invoices/create', [ApInvoiceController::class, 'create'])->name('purchase.ap.invoices.create');
+        Route::post('/ap/invoices', [ApInvoiceController::class, 'store'])->name('purchase.ap.invoices.store');
+        Route::get('/ap/invoices/{apInvoice}/edit', [ApInvoiceController::class, 'edit'])->name('purchase.ap.invoices.edit');
+        Route::put('/ap/invoices/{apInvoice}', [ApInvoiceController::class, 'update'])->name('purchase.ap.invoices.update');
+        Route::delete('/ap/invoices/{apInvoice}', [ApInvoiceController::class, 'destroy'])->name('purchase.ap.invoices.destroy');
+        Route::post('/ap/invoices/{apInvoice}/submit', [ApInvoiceController::class, 'submit'])->name('purchase.ap.invoices.submit');
+        Route::post('/ap/invoices/{apInvoice}/approve', [ApInvoiceController::class, 'approve'])
+            ->middleware('permission:approve.ap_invoice')
+            ->name('purchase.ap.invoices.approve');
+        Route::post('/ap/invoices/{apInvoice}/reject', [ApInvoiceController::class, 'reject'])
+            ->middleware('permission:approve.ap_invoice')
+            ->name('purchase.ap.invoices.reject');
+        Route::get('/ap/invoices/{apInvoice}/record-payment', [ApInvoiceController::class, 'newPayment'])->name('purchase.ap.invoices.record-payment.form');
+        Route::post('/ap/invoices/{apInvoice}/record-payment', [ApInvoiceController::class, 'recordPayment'])->name('purchase.ap.invoices.record-payment.store');
     });
 
     Route::middleware('permission:menu.accounting')->group(function (): void {
@@ -216,6 +235,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/accounting/gl-setting', [GlSettingController::class, 'update'])->name('accounting.gl-setting.update');
 
         Route::get('/accounting/ar-aging', [ArAgingController::class, 'index'])->name('accounting.ar-aging');
+
+        Route::get('/accounting/ap-aging', [ApAgingController::class, 'index'])->name('accounting.ap-aging');
     });
 });
 

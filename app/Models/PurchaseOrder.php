@@ -68,6 +68,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(WorkOrder::class);
     }
 
+    public function apInvoices(): HasMany
+    {
+        return $this->hasMany(ApInvoice::class);
+    }
+
     public static function generateNumber(): string
     {
         $format = json_decode(AppSetting::get('po_format', ''), true) ?? self::defaultFormat();

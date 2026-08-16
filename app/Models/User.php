@@ -46,6 +46,8 @@ class User extends Authenticatable
 
     public const PERMISSION_APPROVE_PURCHASE_VOUCHER = 'approve.purchase_voucher';
 
+    public const PERMISSION_APPROVE_AP_INVOICE = 'approve.ap_invoice';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -114,6 +116,7 @@ class User extends Authenticatable
             self::PERMISSION_APPROVE_PURCHASE_ORDER => false,
             self::PERMISSION_APPROVE_INVOICE_PAYMENT => false,
             self::PERMISSION_APPROVE_PURCHASE_VOUCHER => false,
+            self::PERMISSION_APPROVE_AP_INVOICE => false,
         ];
     }
 
@@ -135,6 +138,7 @@ class User extends Authenticatable
             $template[self::PERMISSION_APPROVE_PURCHASE_ORDER] = true;
             $template[self::PERMISSION_APPROVE_INVOICE_PAYMENT] = true;
             $template[self::PERMISSION_APPROVE_PURCHASE_VOUCHER] = true;
+            $template[self::PERMISSION_APPROVE_AP_INVOICE] = true;
         }
 
         return $template;
@@ -160,6 +164,7 @@ class User extends Authenticatable
             self::PERMISSION_APPROVE_PURCHASE_ORDER => 'Can approve/reject Purchase Order',
             self::PERMISSION_APPROVE_INVOICE_PAYMENT => 'Can approve/reject invoice payment',
             self::PERMISSION_APPROVE_PURCHASE_VOUCHER => 'Can approve/reject Purchase Voucher',
+            self::PERMISSION_APPROVE_AP_INVOICE => 'Can approve/reject AP Invoice',
         ];
     }
 
@@ -215,5 +220,13 @@ class User extends Authenticatable
     public function canApprovePurchaseVoucher(): bool
     {
         return $this->isManagement() && $this->hasPermission(self::PERMISSION_APPROVE_PURCHASE_VOUCHER);
+    }
+
+    /**
+     * Check whether user can approve/reject AP invoice.
+     */
+    public function canApproveApInvoice(): bool
+    {
+        return $this->isManagement() && $this->hasPermission(self::PERMISSION_APPROVE_AP_INVOICE);
     }
 }

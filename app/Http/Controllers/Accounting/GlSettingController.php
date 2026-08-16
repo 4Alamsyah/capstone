@@ -20,6 +20,9 @@ class GlSettingController extends Controller
                 'gl_sales_revenue_account_id' => $this->intOrNull(AppSetting::get('gl_sales_revenue_account_id')),
                 'gl_sales_tax_payable_account_id' => $this->intOrNull(AppSetting::get('gl_sales_tax_payable_account_id')),
                 'gl_cash_bank_account_id' => $this->intOrNull(AppSetting::get('gl_cash_bank_account_id')),
+                'gl_ap_account_id' => $this->intOrNull(AppSetting::get('gl_ap_account_id')),
+                'gl_purchase_expense_account_id' => $this->intOrNull(AppSetting::get('gl_purchase_expense_account_id')),
+                'gl_purchase_tax_input_account_id' => $this->intOrNull(AppSetting::get('gl_purchase_tax_input_account_id')),
             ],
             'accounts' => ChartOfAccount::query()
                 ->orderBy('code')
@@ -40,6 +43,9 @@ class GlSettingController extends Controller
             'gl_sales_revenue_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
             'gl_sales_tax_payable_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
             'gl_cash_bank_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_ap_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_purchase_expense_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_purchase_tax_input_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
         ]);
 
         foreach ($validated as $key => $value) {

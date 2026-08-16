@@ -13,7 +13,7 @@ import {
     SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
-import type { NavItem } from '@/types';
+import type { NavItem, NavSubItem } from '@/types';
 
 defineProps<{
     items: NavItem[];
@@ -21,9 +21,17 @@ defineProps<{
 
 const { isCurrentUrl } = useCurrentUrl();
 
+const isSubItemActive = (item: NavSubItem): boolean => {
+    if (item.items?.length) {
+        return item.items.some((childItem) => isSubItemActive(childItem));
+    }
+
+    return isCurrentUrl(item.href);
+};
+
 const isItemActive = (item: NavItem): boolean => {
     if (item.items?.length) {
-        return item.items.some((subItem) => isCurrentUrl(subItem.href));
+        return item.items.some((subItem) => isSubItemActive(subItem));
     }
 
     return isCurrentUrl(item.href);
@@ -47,7 +55,34 @@ const isItemActive = (item: NavItem): boolean => {
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem v-for="subItem in item.items" :key="subItem.title">
-                                    <SidebarMenuSubButton as-child :is-active="isCurrentUrl(subItem.href)">
+                                    <Collapsible
+                                        v-if="subItem.items?.length"
+                                        as-child
+                                        :default-open="isSubItemActive(subItem)"
+                                        class="group/collapsible-sub"
+                                    >
+                                        <div>
+                                            <CollapsibleTrigger as-child>
+                                                <SidebarMenuSubButton :is-active="isSubItemActive(subItem)">
+                                                    <span>{{ subItem.title }}</span>
+                                                    <ChevronRight class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible-sub:rotate-90" />
+                                                </SidebarMenuSubButton>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <SidebarMenuSub>
+                                                    <SidebarMenuSubItem v-for="childItem in subItem.items" :key="childItem.title">
+                                                        <SidebarMenuSubButton as-child :is-active="isCurrentUrl(childItem.href)">
+                                                            <Link :href="childItem.href">
+                                                                <span>{{ childItem.title }}</span>
+                                                            </Link>
+                                                        </SidebarMenuSubButton>
+                                                    </SidebarMenuSubItem>
+                                                </SidebarMenuSub>
+                                            </CollapsibleContent>
+                                        </div>
+                                    </Collapsible>
+
+                                    <SidebarMenuSubButton v-else as-child :is-active="isCurrentUrl(subItem.href)">
                                         <Link :href="subItem.href">
                                             <span>{{ subItem.title }}</span>
                                         </Link>

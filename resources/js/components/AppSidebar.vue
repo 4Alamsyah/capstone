@@ -57,24 +57,36 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: PackageSearch,
             items: [
                 {
-                    title: 'Part List',
+                    title: 'Part Master',
                     href: '/parts',
+                    items: [
+                        {
+                            title: 'Part List',
+                            href: '/parts',
+                        },
+                        {
+                            title: 'Register Part',
+                            href: '/parts/register',
+                        },
+                        {
+                            title: 'BOM',
+                            href: '/bom',
+                        },
+                    ],
                 },
                 {
-                    title: 'Register Part',
-                    href: '/parts/register',
-                },
-                {
-                    title: 'Warehouse',
+                    title: 'Inventory',
                     href: '/parts/warehouses',
-                },
-                {
-                    title: 'Stock',
-                    href: '/parts/stock',
-                },
-                {
-                    title: 'BOM',
-                    href: '/bom',
+                    items: [
+                        {
+                            title: 'Warehouse',
+                            href: '/parts/warehouses',
+                        },
+                        {
+                            title: 'Stock',
+                            href: '/parts/stock',
+                        },
+                    ],
                 },
             ],
         },
@@ -85,20 +97,26 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: LayoutGrid,
             items: [
                 {
-                    title: 'MO List',
+                    title: 'Work Order',
                     href: '/work-orders',
-                },
-                {
-                    title: 'Report MO',
-                    href: '/work-orders/report',
-                },
-                {
-                    title: 'Log MO',
-                    href: '/work-orders/logs',
-                },
-                {
-                    title: 'Lead Time',
-                    href: '/work-orders/lead-time',
+                    items: [
+                        {
+                            title: 'MO List',
+                            href: '/work-orders',
+                        },
+                        {
+                            title: 'Report MO',
+                            href: '/work-orders/report',
+                        },
+                        {
+                            title: 'Log MO',
+                            href: '/work-orders/logs',
+                        },
+                        {
+                            title: 'Lead Time',
+                            href: '/work-orders/lead-time',
+                        },
+                    ],
                 },
                 {
                     title: 'Work Center',
@@ -112,28 +130,46 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: ShoppingCart,
             items: [
                 {
-                    title: 'Register CO',
-                    href: '/sales/customer-orders/create',
-                },
-                {
-                    title: 'Order List',
+                    title: 'Customer Order',
                     href: '/sales/customer-orders',
+                    items: [
+                        {
+                            title: 'Register CO',
+                            href: '/sales/customer-orders/create',
+                        },
+                        {
+                            title: 'Order List',
+                            href: '/sales/customer-orders',
+                        },
+                    ],
                 },
                 {
-                    title: 'Register Quotation',
-                    href: '/sales/quotations/create',
-                },
-                {
-                    title: 'Quotation List',
+                    title: 'Quotation',
                     href: '/sales/quotations',
+                    items: [
+                        {
+                            title: 'Register Quotation',
+                            href: '/sales/quotations/create',
+                        },
+                        {
+                            title: 'Quotation List',
+                            href: '/sales/quotations',
+                        },
+                    ],
                 },
                 {
-                    title: 'Register Invoice',
-                    href: '/sales/invoices/create',
-                },
-                {
-                    title: 'Invoice List',
+                    title: 'Invoice',
                     href: '/sales/invoices',
+                    items: [
+                        {
+                            title: 'Register Invoice',
+                            href: '/sales/invoices/create',
+                        },
+                        {
+                            title: 'Invoice List',
+                            href: '/sales/invoices',
+                        },
+                    ],
                 },
                 {
                     title: 'Customer Register',
@@ -147,32 +183,48 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Package,
             items: [
                 {
-                    title: 'Register PO',
-                    href: '/purchase/po/create',
-                },
-                {
-                    title: 'List PO',
+                    title: 'PO',
                     href: '/purchase/po',
+                    items: [
+                        {
+                            title: 'Register PO',
+                            href: '/purchase/po/create',
+                        },
+                        {
+                            title: 'List PO',
+                            href: '/purchase/po',
+                        },
+                        {
+                            title: 'Report Arrival',
+                            href: '/purchase/po/arrivals',
+                        },
+                        {
+                            title: 'Log Report',
+                            href: '/purchase/po/arrivals/logs',
+                        },
+                    ],
                 },
                 {
-                    title: 'Report Arrival',
-                    href: '/purchase/po/arrivals',
-                },
-                {
-                    title: 'Log Report',
-                    href: '/purchase/po/arrivals/logs',
-                },
-                {
-                    title: 'Register Voucher',
-                    href: '/purchase/voucher/create',
-                },
-                {
-                    title: 'List Voucher',
+                    title: 'Voucher',
                     href: '/purchase/voucher',
+                    items: [
+                        {
+                            title: 'Register Voucher',
+                            href: '/purchase/voucher/create',
+                        },
+                        {
+                            title: 'List Voucher',
+                            href: '/purchase/voucher',
+                        },
+                        {
+                            title: 'Stock Rekomendasi',
+                            href: '/purchase/voucher/stock-recommendations',
+                        },
+                    ],
                 },
                 {
-                    title: 'Stock Rekomendasi',
-                    href: '/purchase/voucher/stock-recommendations',
+                    title: 'AP Invoice',
+                    href: '/purchase/ap/invoices',
                 },
                 {
                     title: 'Supplier',
@@ -189,45 +241,69 @@ const mainNavItems = computed<NavItem[]>(() => {
                     title: 'General',
                     href: '/accounting/general',
                 },
-                // {
-                //     title: 'Manual Journal',
-                //     href: '/accounting/manual-journal',
-                // },
                 {
-                    title: 'Chart of Accounts',
-                    href: '/accounting/chart-of-accounts',
-                },
-                {
-                    title: 'Fiscal Periods',
-                    href: '/accounting/fiscal-periods',
-                },
-                {
-                    title: 'Journal Entries',
+                    title: 'Journal',
                     href: '/accounting/journal-entries',
+                    items: [
+                        {
+                            title: 'Journal Entries',
+                            href: '/accounting/journal-entries',
+                        },
+                        {
+                            title: 'Report Jurnal',
+                            href: '/accounting/journal-report',
+                        },
+                        {
+                            title: 'Journal Lines',
+                            href: '/accounting/journal-lines',
+                        },
+                    ],
                 },
                 {
-                    title: 'Report Jurnal',
-                    href: '/accounting/journal-report',
+                    title: 'Master Data',
+                    href: '/accounting/chart-of-accounts',
+                    items: [
+                        {
+                            title: 'Chart of Accounts',
+                            href: '/accounting/chart-of-accounts',
+                        },
+                        {
+                            title: 'Fiscal Periods',
+                            href: '/accounting/fiscal-periods',
+                        },
+                    ],
                 },
                 {
-                    title: 'Journal Lines',
-                    href: '/accounting/journal-lines',
-                },
-                {
-                    title: 'Audit Trails',
-                    href: '/accounting/audit-trails',
-                },
-                {
-                    title: 'Tax Setting',
-                    href: '/accounting/tax-setting',
-                },
-                {
-                    title: 'GL Setting',
-                    href: '/accounting/gl-setting',
-                },
-                {
-                    title: 'AR Aging',
+                    title: 'Reports',
                     href: '/accounting/ar-aging',
+                    items: [
+                        {
+                            title: 'AR Aging',
+                            href: '/accounting/ar-aging',
+                        },
+                        {
+                            title: 'AP Aging',
+                            href: '/accounting/ap-aging',
+                        },
+                        {
+                            title: 'Audit Trails',
+                            href: '/accounting/audit-trails',
+                        },
+                    ],
+                },
+                {
+                    title: 'Settings',
+                    href: '/accounting/tax-setting',
+                    items: [
+                        {
+                            title: 'Tax Setting',
+                            href: '/accounting/tax-setting',
+                        },
+                        {
+                            title: 'GL Setting',
+                            href: '/accounting/gl-setting',
+                        },
+                    ],
                 },
             ],
         },
