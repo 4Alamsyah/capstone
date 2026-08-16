@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const { t } = useI18n();
 
 type FiscalPeriodOption = {
     id: number;
@@ -59,8 +62,8 @@ const props = defineProps<Props>();
 const editingId = ref<number | null>(null);
 
 const breadcrumbItems: BreadcrumbItem[] = [
-    { title: 'Accounting', href: '/accounting/general' },
-    { title: 'Journal Entries', href: '/accounting/journal-entries' },
+    { title: t('nav.accounting'), href: '/accounting/general' },
+    { title: t('nav.journal_entries'), href: '/accounting/journal-entries' },
 ];
 
 const createLine = () => ({
@@ -154,7 +157,7 @@ const removeLine = (index: number) => {
 };
 
 const deleteEntry = (entry: JournalEntry) => {
-    if (!window.confirm(`Hapus journal entry ${entry.entry_number}?`)) {
+    if (!window.confirm(t('accounting.journal_entries.delete_confirm', { number: entry.entry_number }))) {
         return;
     }
 
@@ -170,20 +173,20 @@ const deleteEntry = (entry: JournalEntry) => {
 
         <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <Heading
-                title="Journal Entries"
-                description="CRUD untuk header jurnal, lengkap dengan detail line debit dan credit."
+                :title="t('accounting.journal_entries.heading_title')"
+                :description="t('accounting.journal_entries.heading_description')"
             />
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <form class="grid gap-4 md:grid-cols-2" @submit.prevent="submit">
                     <div class="grid gap-2">
-                        <Label for="entry-number">Entry Number</Label>
+                        <Label for="entry-number">{{ t('accounting.journal_form.entry_number_label') }}</Label>
                         <Input id="entry-number" v-model="form.entry_number" placeholder="JE-2026-0005" />
                         <InputError :message="form.errors.entry_number" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="fiscal-period">Fiscal Period</Label>
+                        <Label for="fiscal-period">{{ t('accounting.journal_form.fiscal_period_label') }}</Label>
                         <select id="fiscal-period" v-model.number="form.fiscal_period_id" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
                             <option v-for="period in fiscalPeriods" :key="period.id" :value="period.id">
                                 {{ period.code }}
@@ -193,35 +196,35 @@ const deleteEntry = (entry: JournalEntry) => {
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="entry-date">Tanggal</Label>
+                        <Label for="entry-date">{{ t('accounting.journal_form.entry_date_label') }}</Label>
                         <Input id="entry-date" v-model="form.entry_date" type="date" />
                         <InputError :message="form.errors.entry_date" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="status">Status</Label>
+                        <Label for="status">{{ t('accounting.journal_form.status_label') }}</Label>
                         <select id="status" v-model="form.status" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                            <option value="draft">Draft</option>
-                            <option value="posted">Posted</option>
+                            <option value="draft">{{ t('accounting.journal_form.status_draft') }}</option>
+                            <option value="posted">{{ t('accounting.journal_form.status_posted') }}</option>
                         </select>
                         <InputError :message="form.errors.status" />
                     </div>
 
                     <div class="grid gap-2 md:col-span-2">
-                        <Label for="description">Description</Label>
-                        <Input id="description" v-model="form.description" placeholder="Contoh: Penyesuaian biaya utilitas" />
+                        <Label for="description">{{ t('accounting.journal_form.description_label') }}</Label>
+                        <Input id="description" v-model="form.description" :placeholder="t('accounting.journal_form.description_placeholder')" />
                         <InputError :message="form.errors.description" />
                     </div>
 
                     <div class="md:col-span-2 space-y-4 rounded-lg border border-sidebar-border/70 p-4">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 class="text-sm font-semibold">Journal Lines</h3>
-                            <Button type="button" variant="outline" @click="addLine">Add Line</Button>
+                            <h3 class="text-sm font-semibold">{{ t('accounting.journal_form.journal_lines_heading') }}</h3>
+                            <Button type="button" variant="outline" @click="addLine">{{ t('accounting.journal_form.add_line_button') }}</Button>
                         </div>
 
                         <div v-for="(line, index) in form.lines" :key="index" class="grid gap-3 rounded-md border border-sidebar-border/60 p-3 md:grid-cols-4">
                             <div class="grid gap-2">
-                                <Label :for="`journal-account-${index}`">Akun</Label>
+                                <Label :for="`journal-account-${index}`">{{ t('accounting.journal_form.account_label') }}</Label>
                                 <select :id="`journal-account-${index}`" v-model.number="line.chart_of_account_id" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
                                     <option v-for="account in accounts" :key="account.id" :value="account.id">
                                         {{ account.code }} - {{ account.name }}
@@ -230,34 +233,34 @@ const deleteEntry = (entry: JournalEntry) => {
                             </div>
 
                             <div class="grid gap-2">
-                                <Label :for="`journal-type-${index}`">Type</Label>
+                                <Label :for="`journal-type-${index}`">{{ t('accounting.journal_form.type_label') }}</Label>
                                 <select :id="`journal-type-${index}`" v-model="line.line_type" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                                    <option value="debit">Debit</option>
-                                    <option value="credit">Credit</option>
+                                    <option value="debit">{{ t('accounting.journal_form.debit_option') }}</option>
+                                    <option value="credit">{{ t('accounting.journal_form.credit_option') }}</option>
                                 </select>
                             </div>
 
                             <div class="grid gap-2">
-                                <Label :for="`journal-amount-${index}`">Amount</Label>
+                                <Label :for="`journal-amount-${index}`">{{ t('accounting.journal_form.amount_label') }}</Label>
                                 <Input :id="`journal-amount-${index}`" v-model="line.amount" type="number" min="0" step="0.01" />
                             </div>
 
                             <div class="grid gap-2">
-                                <Label :for="`journal-line-description-${index}`">Description</Label>
+                                <Label :for="`journal-line-description-${index}`">{{ t('accounting.journal_form.description_label') }}</Label>
                                 <div class="flex gap-2">
-                                    <Input :id="`journal-line-description-${index}`" v-model="line.description" placeholder="Opsional" />
-                                    <Button type="button" variant="ghost" @click="removeLine(index)">Remove</Button>
+                                    <Input :id="`journal-line-description-${index}`" v-model="line.description" :placeholder="t('accounting.journal_form.line_description_placeholder')" />
+                                    <Button type="button" variant="ghost" @click="removeLine(index)">{{ t('accounting.journal_form.remove_button') }}</Button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-4 text-sm">
-                        <p>Debit total: {{ debitTotal.toLocaleString('id-ID') }} | Credit total: {{ creditTotal.toLocaleString('id-ID') }}</p>
+                        <p>{{ t('accounting.journal_form.debit_total_label') }}: {{ debitTotal.toLocaleString('id-ID') }} | {{ t('accounting.journal_form.credit_total_label') }}: {{ creditTotal.toLocaleString('id-ID') }}</p>
                         <div class="flex gap-2">
-                            <Button type="button" variant="outline" @click="resetForm">Reset</Button>
+                            <Button type="button" variant="outline" @click="resetForm">{{ t('common.reset') }}</Button>
                             <Button type="submit" :disabled="form.processing">
-                                {{ editingId ? 'Update Journal' : 'Save Journal' }}
+                                {{ editingId ? t('accounting.journal_form.update_journal_button') : t('accounting.journal_form.save_journal_button') }}
                             </Button>
                         </div>
                     </div>
@@ -266,19 +269,19 @@ const deleteEntry = (entry: JournalEntry) => {
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <form class="mb-4 flex gap-2" @submit.prevent="submitSearch">
-                    <Input v-model="searchForm.search" placeholder="Search journal entry..." class="max-w-sm" />
-                    <Button type="submit" variant="outline">Search</Button>
+                    <Input v-model="searchForm.search" :placeholder="t('accounting.journal_entries.search_placeholder')" class="max-w-sm" />
+                    <Button type="submit" variant="outline">{{ t('common.search') }}</Button>
                 </form>
 
                 <div class="overflow-hidden rounded-lg border border-sidebar-border/60">
                     <table class="w-full text-sm">
                         <thead class="bg-muted/50 text-left text-muted-foreground">
                             <tr>
-                                <th class="px-4 py-3 font-medium">Entry Number</th>
-                                <th class="px-4 py-3 font-medium">Date</th>
-                                <th class="px-4 py-3 font-medium">Period</th>
-                                <th class="px-4 py-3 font-medium">Status</th>
-                                <th class="px-4 py-3 font-medium">Action</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_entries.table_entry_number') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_entries.table_date') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_entries.table_period') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_entries.table_status') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_entries.table_action') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -288,8 +291,8 @@ const deleteEntry = (entry: JournalEntry) => {
                                 <td class="px-4 py-3">{{ entry.fiscal_period_code }}</td>
                                 <td class="px-4 py-3">{{ entry.status }}</td>
                                 <td class="px-4 py-3 space-x-2">
-                                    <Button type="button" size="sm" variant="outline" @click="editEntry(entry)">Edit</Button>
-                                    <Button type="button" size="sm" variant="destructive" @click="deleteEntry(entry)">Delete</Button>
+                                    <Button type="button" size="sm" variant="outline" @click="editEntry(entry)">{{ t('common.edit') }}</Button>
+                                    <Button type="button" size="sm" variant="destructive" @click="deleteEntry(entry)">{{ t('common.delete') }}</Button>
                                 </td>
                             </tr>
                         </tbody>

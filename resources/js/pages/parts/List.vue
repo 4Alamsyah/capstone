@@ -63,9 +63,15 @@ type PaginationMeta = {
     next_page_url: string | null;
 };
 
+type DefaultCurrency = {
+    code: string;
+    symbol: string;
+};
+
 type Props = {
     parts: PartItem[];
     warehouses: WarehouseOption[];
+    defaultCurrency: DefaultCurrency;
     filters: {
         search: string;
     };
@@ -102,11 +108,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
+    const formatted = new Intl.NumberFormat('id-ID', {
         maximumFractionDigits: 2,
-    }).format(value);
+    }).format(value || 0);
+
+    return `${props.defaultCurrency.symbol} ${formatted}`;
 };
 
 const formatCategory = (category: 'purchase' | 'manufacture'): string => {

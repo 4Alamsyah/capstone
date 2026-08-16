@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const { t } = useI18n();
 
 type Period = {
     id: number;
@@ -33,8 +36,8 @@ const props = defineProps<Props>();
 const editingId = ref<number | null>(null);
 
 const breadcrumbItems: BreadcrumbItem[] = [
-    { title: 'Accounting', href: '/accounting/general' },
-    { title: 'Fiscal Periods', href: '/accounting/fiscal-periods' },
+    { title: t('nav.accounting'), href: '/accounting/general' },
+    { title: t('nav.fiscal_periods'), href: '/accounting/fiscal-periods' },
 ];
 
 const form = useForm({
@@ -88,7 +91,7 @@ const submit = () => {
 };
 
 const deletePeriod = (period: Period) => {
-    if (!window.confirm(`Hapus fiscal period ${period.code}?`)) {
+    if (!window.confirm(t('accounting.fiscal_periods.delete_confirm', { code: period.code }))) {
         return;
     }
 
@@ -104,62 +107,62 @@ const deletePeriod = (period: Period) => {
 
         <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <Heading
-                title="Fiscal Periods"
-                description="CRUD untuk membuka, menutup, dan mengatur periode akuntansi."
+                :title="t('accounting.fiscal_periods.heading_title')"
+                :description="t('accounting.fiscal_periods.heading_description')"
             />
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <form class="grid gap-4 md:grid-cols-2" @submit.prevent="submit">
                     <div class="grid gap-2">
-                        <Label for="code">Code</Label>
+                        <Label for="code">{{ t('accounting.fiscal_periods.code_label') }}</Label>
                         <Input id="code" v-model="form.code" placeholder="2026-04" />
                         <InputError :message="form.errors.code" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="status">Status</Label>
+                        <Label for="status">{{ t('accounting.fiscal_periods.status_label') }}</Label>
                         <select id="status" v-model="form.status" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                            <option value="open">Open</option>
-                            <option value="closed">Closed</option>
+                            <option value="open">{{ t('accounting.fiscal_periods.status_open') }}</option>
+                            <option value="closed">{{ t('accounting.fiscal_periods.status_closed') }}</option>
                         </select>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="start-date">Start Date</Label>
+                        <Label for="start-date">{{ t('accounting.fiscal_periods.start_date_label') }}</Label>
                         <Input id="start-date" v-model="form.start_date" type="date" />
                         <InputError :message="form.errors.start_date" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="end-date">End Date</Label>
+                        <Label for="end-date">{{ t('accounting.fiscal_periods.end_date_label') }}</Label>
                         <Input id="end-date" v-model="form.end_date" type="date" />
                         <InputError :message="form.errors.end_date" />
                     </div>
 
                     <div class="md:col-span-2 flex items-center gap-3">
                         <Button type="submit" :disabled="form.processing">
-                            {{ editingId ? 'Update Period' : 'Save Period' }}
+                            {{ editingId ? t('accounting.fiscal_periods.update_button') : t('accounting.fiscal_periods.save_button') }}
                         </Button>
-                        <Button type="button" variant="outline" @click="resetForm">Reset</Button>
+                        <Button type="button" variant="outline" @click="resetForm">{{ t('common.reset') }}</Button>
                     </div>
                 </form>
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <form class="mb-4 flex gap-2" @submit.prevent="submitSearch">
-                    <Input v-model="searchForm.search" placeholder="Search period..." class="max-w-sm" />
-                    <Button type="submit" variant="outline">Search</Button>
+                    <Input v-model="searchForm.search" :placeholder="t('accounting.fiscal_periods.search_placeholder')" class="max-w-sm" />
+                    <Button type="submit" variant="outline">{{ t('common.search') }}</Button>
                 </form>
 
                 <div class="overflow-hidden rounded-lg border border-sidebar-border/60">
                     <table class="w-full text-sm">
                         <thead class="bg-muted/50 text-left text-muted-foreground">
                             <tr>
-                                <th class="px-4 py-3 font-medium">Code</th>
-                                <th class="px-4 py-3 font-medium">Start</th>
-                                <th class="px-4 py-3 font-medium">End</th>
-                                <th class="px-4 py-3 font-medium">Status</th>
-                                <th class="px-4 py-3 font-medium">Action</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.fiscal_periods.table_code') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.fiscal_periods.table_start') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.fiscal_periods.table_end') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.fiscal_periods.table_status') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.fiscal_periods.table_action') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -169,8 +172,8 @@ const deletePeriod = (period: Period) => {
                                 <td class="px-4 py-3">{{ period.end_date }}</td>
                                 <td class="px-4 py-3">{{ period.status }}</td>
                                 <td class="px-4 py-3 space-x-2">
-                                    <Button type="button" size="sm" variant="outline" @click="editPeriod(period)">Edit</Button>
-                                    <Button type="button" size="sm" variant="destructive" @click="deletePeriod(period)">Delete</Button>
+                                    <Button type="button" size="sm" variant="outline" @click="editPeriod(period)">{{ t('common.edit') }}</Button>
+                                    <Button type="button" size="sm" variant="destructive" @click="deletePeriod(period)">{{ t('common.delete') }}</Button>
                                 </td>
                             </tr>
                         </tbody>

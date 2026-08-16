@@ -23,6 +23,10 @@ class GlSettingController extends Controller
                 'gl_ap_account_id' => $this->intOrNull(AppSetting::get('gl_ap_account_id')),
                 'gl_purchase_expense_account_id' => $this->intOrNull(AppSetting::get('gl_purchase_expense_account_id')),
                 'gl_purchase_tax_input_account_id' => $this->intOrNull(AppSetting::get('gl_purchase_tax_input_account_id')),
+                'gl_realized_fx_gain_account_id' => $this->intOrNull(AppSetting::get('gl_realized_fx_gain_account_id')),
+                'gl_realized_fx_loss_account_id' => $this->intOrNull(AppSetting::get('gl_realized_fx_loss_account_id')),
+                'gl_unrealized_fx_gain_account_id' => $this->intOrNull(AppSetting::get('gl_unrealized_fx_gain_account_id')),
+                'gl_unrealized_fx_loss_account_id' => $this->intOrNull(AppSetting::get('gl_unrealized_fx_loss_account_id')),
             ],
             'accounts' => ChartOfAccount::query()
                 ->orderBy('code')
@@ -46,9 +50,17 @@ class GlSettingController extends Controller
             'gl_ap_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
             'gl_purchase_expense_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
             'gl_purchase_tax_input_account_id' => ['required', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_realized_fx_gain_account_id' => ['nullable', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_realized_fx_loss_account_id' => ['nullable', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_unrealized_fx_gain_account_id' => ['nullable', 'integer', 'exists:chart_of_accounts,id'],
+            'gl_unrealized_fx_loss_account_id' => ['nullable', 'integer', 'exists:chart_of_accounts,id'],
         ]);
 
         foreach ($validated as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+
             AppSetting::set($key, (string) $value);
         }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -48,13 +49,14 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 const editingId = ref<number | null>(null);
 const accountDialogOpen = ref(false);
 const importFileInput = ref<HTMLInputElement | null>(null);
 
 const breadcrumbItems: BreadcrumbItem[] = [
-    { title: 'Accounting', href: '/accounting/general' },
-    { title: 'Chart of Accounts', href: '/accounting/chart-of-accounts' },
+    { title: t('nav.accounting'), href: '/accounting/general' },
+    { title: t('nav.chart_of_accounts'), href: '/accounting/chart-of-accounts' },
 ];
 
 const form = useForm({
@@ -158,7 +160,7 @@ const submit = () => {
 };
 
 const deleteAccount = (account: Account) => {
-    if (!window.confirm(`Hapus akun ${account.code} - ${account.name}?`)) {
+    if (!window.confirm(t('accounting.chart_of_accounts.delete_confirm', { code: account.code, name: account.name }))) {
         return;
     }
 
@@ -175,22 +177,20 @@ const deleteAccount = (account: Account) => {
         <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <Heading
-                    title="Chart of Accounts"
-                    description="CRUD untuk daftar akun utama yang dipakai di jurnal dan laporan keuangan."
+                    :title="t('accounting.chart_of_accounts.heading_title')"
+                    :description="t('accounting.chart_of_accounts.heading_description')"
                 />
                 <Button type="button" @click="openCreateDialog"
-                    >Add Account</Button
+                    >{{ t('accounting.chart_of_accounts.add_account_button') }}</Button
                 >
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h3 class="text-sm font-medium">Import / Export</h3>
+                        <h3 class="text-sm font-medium">{{ t('accounting.chart_of_accounts.import_export_heading') }}</h3>
                         <p class="text-sm text-muted-foreground">
-                            Download template, isi data akun, lalu import
-                            kembali. Export mengikuti filter pencarian yang
-                            aktif.
+                            {{ t('accounting.chart_of_accounts.import_export_desc') }}
                         </p>
                     </div>
 
@@ -201,14 +201,14 @@ const deleteAccount = (account: Account) => {
                             variant="outline"
                             size="sm"
                         >
-                            Download Template
+                            {{ t('common.download_template') }}
                         </Button>
                         <Button
                             as="a"
                             :href="exportUrl"
                             variant="outline"
                             size="sm"
-                            >Export Excel</Button
+                            >{{ t('common.export_excel') }}</Button
                         >
 
                         <input
@@ -227,7 +227,7 @@ const deleteAccount = (account: Account) => {
                             {{
                                 importForm.file
                                     ? importForm.file.name
-                                    : 'Pilih File'
+                                    : t('common.choose_file')
                             }}
                         </Button>
                         <Button
@@ -240,8 +240,8 @@ const deleteAccount = (account: Account) => {
                         >
                             {{
                                 importForm.processing
-                                    ? 'Mengimpor...'
-                                    : 'Import'
+                                    ? t('common.importing')
+                                    : t('common.import')
                             }}
                         </Button>
                     </div>
@@ -254,16 +254,14 @@ const deleteAccount = (account: Account) => {
                     class="mt-4 rounded-md border border-sidebar-border/60 bg-muted/30 p-3 text-sm"
                 >
                     <p>
-                        Import selesai:
-                        <strong>{{ importResult.created }}</strong> akun baru,
-                        <strong>{{ importResult.updated }}</strong> diperbarui.
+                        {{ t('accounting.chart_of_accounts.import_result_summary', { created: importResult.created, updated: importResult.updated }) }}
                     </p>
                     <div v-if="importResult.errors.length" class="mt-2">
                         <p class="font-medium text-destructive">
-                            {{ importResult.errorCount }} baris dilewati{{
+                            {{ t('accounting.chart_of_accounts.import_errors_summary', { count: importResult.errorCount }) }}{{
                                 importResult.errorCount >
                                 importResult.errors.length
-                                    ? ` (menampilkan ${importResult.errors.length} pertama)`
+                                    ? t('accounting.chart_of_accounts.import_errors_shown', { shown: importResult.errors.length })
                                     : ''
                             }}:
                         </p>
@@ -285,10 +283,10 @@ const deleteAccount = (account: Account) => {
                 <form class="mb-4 flex gap-2" @submit.prevent="submitSearch">
                     <Input
                         v-model="searchForm.search"
-                        placeholder="Search account..."
+                        :placeholder="t('accounting.chart_of_accounts.search_placeholder')"
                         class="max-w-sm"
                     />
-                    <Button type="submit" variant="outline">Search</Button>
+                    <Button type="submit" variant="outline">{{ t('common.search') }}</Button>
                 </form>
 
                 <div
@@ -299,12 +297,12 @@ const deleteAccount = (account: Account) => {
                             class="bg-muted/50 text-left text-muted-foreground"
                         >
                             <tr>
-                                <th class="px-4 py-3 font-medium">Code</th>
-                                <th class="px-4 py-3 font-medium">Name</th>
-                                <th class="px-4 py-3 font-medium">Type</th>
-                                <th class="px-4 py-3 font-medium">Category</th>
-                                <th class="px-4 py-3 font-medium">Status</th>
-                                <th class="px-4 py-3 font-medium">Action</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_code') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_name') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_type') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_category') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_status') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.chart_of_accounts.table_action') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -322,7 +320,7 @@ const deleteAccount = (account: Account) => {
                                         {{ props.typeLabels[account.account_type] ?? account.account_type }}
                                     </span>
                                     <span v-else class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                        Unclassified
+                                        {{ t('accounting.chart_of_accounts.unclassified_badge') }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3">
@@ -335,14 +333,14 @@ const deleteAccount = (account: Account) => {
                                         size="sm"
                                         variant="outline"
                                         @click="editAccount(account)"
-                                        >Edit</Button
+                                        >{{ t('common.edit') }}</Button
                                     >
                                     <Button
                                         type="button"
                                         size="sm"
                                         variant="destructive"
                                         @click="deleteAccount(account)"
-                                        >Delete</Button
+                                        >{{ t('common.delete') }}</Button
                                     >
                                 </td>
                             </tr>
@@ -361,13 +359,13 @@ const deleteAccount = (account: Account) => {
                 <DialogContent class="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{{
-                            editingId ? 'Edit Account' : 'Add Account'
+                            editingId ? t('accounting.chart_of_accounts.dialog_edit_title') : t('accounting.chart_of_accounts.dialog_add_title')
                         }}</DialogTitle>
                         <DialogDescription>
                             {{
                                 editingId
-                                    ? 'Ubah data akun yang dipilih.'
-                                    : 'Tambahkan akun baru ke Chart of Accounts.'
+                                    ? t('accounting.chart_of_accounts.dialog_edit_desc')
+                                    : t('accounting.chart_of_accounts.dialog_add_desc')
                             }}
                         </DialogDescription>
                     </DialogHeader>
@@ -377,7 +375,7 @@ const deleteAccount = (account: Account) => {
                         @submit.prevent="submit"
                     >
                         <div class="grid gap-2">
-                            <Label for="code">Code</Label>
+                            <Label for="code">{{ t('accounting.chart_of_accounts.code_label') }}</Label>
                             <Input
                                 id="code"
                                 v-model="form.code"
@@ -387,7 +385,7 @@ const deleteAccount = (account: Account) => {
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="name">Name</Label>
+                            <Label for="name">{{ t('accounting.chart_of_accounts.name_label') }}</Label>
                             <Input
                                 id="name"
                                 v-model="form.name"
@@ -397,20 +395,20 @@ const deleteAccount = (account: Account) => {
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="account_type">Type</Label>
+                            <Label for="account_type">{{ t('accounting.chart_of_accounts.type_label') }}</Label>
                             <select
                                 id="account_type"
                                 v-model="form.account_type"
                                 class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
                             >
-                                <option value="" disabled>- pilih type -</option>
+                                <option value="" disabled>{{ t('accounting.chart_of_accounts.select_type_option') }}</option>
                                 <option v-for="(label, key) in typeLabels" :key="key" :value="key">{{ label }}</option>
                             </select>
                             <InputError :message="form.errors.account_type" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="category">Category</Label>
+                            <Label for="category">{{ t('accounting.chart_of_accounts.category_label') }}</Label>
                             <Input
                                 id="category"
                                 v-model="form.category"
@@ -420,14 +418,14 @@ const deleteAccount = (account: Account) => {
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="status">Status</Label>
+                            <Label for="status">{{ t('accounting.chart_of_accounts.status_label') }}</Label>
                             <select
                                 id="status"
                                 v-model="form.status"
                                 class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
                             >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
+                                <option value="active">{{ t('accounting.chart_of_accounts.status_active') }}</option>
+                                <option value="inactive">{{ t('accounting.chart_of_accounts.status_inactive') }}</option>
                             </select>
                         </div>
 
@@ -436,13 +434,13 @@ const deleteAccount = (account: Account) => {
                                 type="button"
                                 variant="outline"
                                 @click="closeAccountDialog"
-                                >Cancel</Button
+                                >{{ t('common.cancel') }}</Button
                             >
                             <Button type="submit" :disabled="form.processing">
                                 {{
                                     editingId
-                                        ? 'Update Account'
-                                        : 'Save Account'
+                                        ? t('accounting.chart_of_accounts.update_button')
+                                        : t('accounting.chart_of_accounts.save_button')
                                 }}
                             </Button>
                         </DialogFooter>

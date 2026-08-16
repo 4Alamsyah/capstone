@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderItem;
 use App\Models\Currency;
+use App\Models\ExchangeRate;
 use App\Models\FiscalPeriod;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -595,7 +596,10 @@ class InvoiceController extends Controller
 
     /**
      * Post the AR billing entry when an invoice is sent: DR Accounts Receivable,
-     * CR Sales Revenue (+ CR Sales Tax Payable if tax_amount > 0).
+     * CR Sales Revenue (+ CR Sales Tax Payable if tax_amount > 0). Amounts are
+     * converted from the invoice's currency to the base currency using the
+     * exchange rate as of the invoice date; that rate becomes the invoice's
+     * carrying rate for future realized gain/loss and FX revaluation.
      */
     private function postInvoiceBillingToGl(Invoice $invoice): void
     {
@@ -617,11 +621,20 @@ class InvoiceController extends Controller
             ]);
         }
 
+        $baseCurrencyCode = (string) AppSetting::get('default_currency_code', 'IDR');
+        $rate = ExchangeRate::rateFor($invoice->currency_code, $baseCurrencyCode, (string) $invoice->invoice_date->format('Y-m-d'));
+
+        $baseSubtotal = round((float) $invoice->subtotal * $rate, 2);
+        $baseTax = round((float) $invoice->tax_amount * $rate, 2);
+        $baseTotal = $baseSubtotal + $baseTax;
+
+        $fxNote = $rate !== 1.0 ? ' (' . $invoice->currency_code . ' @ ' . $rate . ')' : '';
+
         $entry = JournalEntry::query()->create([
             'fiscal_period_id' => $fiscalPeriod->id,
             'entry_number' => JournalEntry::generateEntryNumber(),
             'entry_date' => $invoice->invoice_date,
-            'description' => 'AR billing: Invoice ' . $invoice->invoice_number,
+            'description' => 'AR billing: Invoice ' . $invoice->invoice_number . $fxNote,
             'status' => 'posted',
             'posted_at' => now(),
         ]);
@@ -630,7 +643,7 @@ class InvoiceController extends Controller
             'journal_entry_id' => $entry->id,
             'chart_of_account_id' => $arAccountId,
             'line_type' => 'debit',
-            'amount' => $invoice->total_amount,
+            'amount' => $baseTotal,
             'description' => 'Invoice ' . $invoice->invoice_number,
         ]);
 
@@ -638,11 +651,11 @@ class InvoiceController extends Controller
             'journal_entry_id' => $entry->id,
             'chart_of_account_id' => $revenueAccountId,
             'line_type' => 'credit',
-            'amount' => $invoice->subtotal,
+            'amount' => $baseSubtotal,
             'description' => 'Invoice ' . $invoice->invoice_number,
         ]);
 
-        if ((float) $invoice->tax_amount > 0) {
+        if ($baseTax > 0) {
             if (! $taxPayableAccountId) {
                 throw ValidationException::withMessages([
                     'invoice' => 'GL Account Mapping untuk Sales Tax Payable belum diatur.',
@@ -653,14 +666,20 @@ class InvoiceController extends Controller
                 'journal_entry_id' => $entry->id,
                 'chart_of_account_id' => $taxPayableAccountId,
                 'line_type' => 'credit',
-                'amount' => $invoice->tax_amount,
+                'amount' => $baseTax,
                 'description' => 'Invoice ' . $invoice->invoice_number . ' (tax)',
             ]);
         }
+
+        $invoice->update(['carrying_exchange_rate' => $rate]);
     }
 
     /**
-     * Post the settlement entry when a payment is recorded: DR Cash/Bank, CR Accounts Receivable.
+     * Post the settlement entry when a payment is recorded: DR Cash/Bank, CR
+     * Accounts Receivable, both converted to base currency. The cash side
+     * uses today's rate; the AR side uses the invoice's carrying rate (the
+     * rate it's currently recorded at in the GL). Any difference is a
+     * Realized FX Gain (credit) or Loss (debit) so the entry still balances.
      */
     private function postPaymentToGl(Payment $payment, Invoice $invoice): void
     {
@@ -681,6 +700,14 @@ class InvoiceController extends Controller
             ]);
         }
 
+        $baseCurrencyCode = (string) AppSetting::get('default_currency_code', 'IDR');
+        $paymentRate = ExchangeRate::rateFor($invoice->currency_code, $baseCurrencyCode, (string) $payment->payment_date->format('Y-m-d'));
+        $carryingRate = (float) ($invoice->carrying_exchange_rate ?? $paymentRate);
+
+        $baseCashAmount = round((float) $payment->amount * $paymentRate, 2);
+        $baseArReduction = round((float) $payment->amount * $carryingRate, 2);
+        $fxDifference = round($baseCashAmount - $baseArReduction, 2);
+
         $entry = JournalEntry::query()->create([
             'fiscal_period_id' => $fiscalPeriod->id,
             'entry_number' => JournalEntry::generateEntryNumber(),
@@ -694,7 +721,7 @@ class InvoiceController extends Controller
             'journal_entry_id' => $entry->id,
             'chart_of_account_id' => $cashAccountId,
             'line_type' => 'debit',
-            'amount' => $payment->amount,
+            'amount' => $baseCashAmount,
             'description' => $payment->payment_number,
         ]);
 
@@ -702,9 +729,45 @@ class InvoiceController extends Controller
             'journal_entry_id' => $entry->id,
             'chart_of_account_id' => $arAccountId,
             'line_type' => 'credit',
-            'amount' => $payment->amount,
+            'amount' => $baseArReduction,
             'description' => $payment->payment_number,
         ]);
+
+        if (abs($fxDifference) >= 0.01) {
+            if ($fxDifference > 0) {
+                $gainAccountId = (int) AppSetting::get('gl_realized_fx_gain_account_id');
+
+                if (! $gainAccountId) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'GL Account Mapping untuk Realized FX Gain belum diatur. Buka dulu di Accounting > GL Setting.',
+                    ]);
+                }
+
+                JournalLine::query()->create([
+                    'journal_entry_id' => $entry->id,
+                    'chart_of_account_id' => $gainAccountId,
+                    'line_type' => 'credit',
+                    'amount' => $fxDifference,
+                    'description' => 'Realized FX gain: ' . $payment->payment_number,
+                ]);
+            } else {
+                $lossAccountId = (int) AppSetting::get('gl_realized_fx_loss_account_id');
+
+                if (! $lossAccountId) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'GL Account Mapping untuk Realized FX Loss belum diatur. Buka dulu di Accounting > GL Setting.',
+                    ]);
+                }
+
+                JournalLine::query()->create([
+                    'journal_entry_id' => $entry->id,
+                    'chart_of_account_id' => $lossAccountId,
+                    'line_type' => 'debit',
+                    'amount' => abs($fxDifference),
+                    'description' => 'Realized FX loss: ' . $payment->payment_number,
+                ]);
+            }
+        }
 
         $payment->update(['journal_entry_id' => $entry->id]);
     }

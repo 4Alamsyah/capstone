@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
@@ -29,13 +30,22 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Accounting', href: '/accounting/general' },
-    { title: 'AP Aging', href: '/accounting/ap-aging' },
+    { title: t('nav.accounting'), href: '/accounting/general' },
+    { title: t('nav.ap_aging'), href: '/accounting/ap-aging' },
 ];
 
 const bucketOrder = ['Not Due', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Days'];
+
+const bucketLabelKeys: Record<string, string> = {
+    'Not Due': 'accounting.aging.bucket_not_due',
+    '1-30 Days': 'accounting.aging.bucket_1_30',
+    '31-60 Days': 'accounting.aging.bucket_31_60',
+    '61-90 Days': 'accounting.aging.bucket_61_90',
+    '90+ Days': 'accounting.aging.bucket_90_plus',
+};
 </script>
 
 <template>
@@ -44,20 +54,20 @@ const bucketOrder = ['Not Due', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Da
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
             <Heading
-                title="AP Aging"
-                description="Daftar AP invoice yang masih outstanding, dikelompokkan berdasarkan umur utang."
+                :title="t('accounting.ap_aging.heading_title')"
+                :description="t('accounting.ap_aging.heading_description')"
             />
 
             <div class="rounded-lg border border-sidebar-border/70 bg-muted/30 p-4">
                 <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted-foreground">Total Outstanding Payable</span>
+                    <span class="text-sm text-muted-foreground">{{ t('accounting.ap_aging.total_outstanding_label') }}</span>
                     <span class="font-mono text-lg font-semibold">{{ Number(props.grandTotal).toLocaleString() }}</span>
                 </div>
             </div>
 
             <div v-for="bucketName in bucketOrder" :key="bucketName" class="rounded-lg border border-sidebar-border/70 p-4">
                 <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold">{{ bucketName }}</h3>
+                    <h3 class="text-sm font-semibold">{{ t(bucketLabelKeys[bucketName]) }}</h3>
                     <span class="font-mono text-sm text-muted-foreground">
                         {{ Number(props.buckets[bucketName]?.total_balance ?? 0).toLocaleString() }}
                     </span>
@@ -67,19 +77,19 @@ const bucketOrder = ['Not Due', '1-30 Days', '31-60 Days', '61-90 Days', '90+ Da
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
-                                <th class="py-2 pr-3">AP Invoice Number</th>
-                                <th class="py-2 pr-3">Supplier</th>
-                                <th class="py-2 pr-3">Invoice Date</th>
-                                <th class="py-2 pr-3">Due Date</th>
-                                <th class="py-2 pr-3">Total</th>
-                                <th class="py-2 pr-3">Paid</th>
-                                <th class="py-2 pr-3">Balance</th>
-                                <th class="py-2 pr-3">Days Overdue</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_invoice_number') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.ap_aging.table_supplier') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_invoice_date') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_due_date') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_total') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_paid') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_balance') }}</th>
+                                <th class="py-2 pr-3">{{ t('accounting.aging.table_days_overdue') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="!(props.buckets[bucketName]?.rows.length)">
-                                <td colspan="8" class="py-4 text-center text-muted-foreground">No AP invoices in this bucket.</td>
+                                <td colspan="8" class="py-4 text-center text-muted-foreground">{{ t('accounting.ap_aging.no_data_row') }}</td>
                             </tr>
                             <tr
                                 v-for="row in props.buckets[bucketName]?.rows"

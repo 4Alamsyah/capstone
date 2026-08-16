@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const { t } = useI18n();
 
 type FiscalPeriodOption = {
     id: number;
@@ -70,8 +73,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
-    { title: 'Accounting', href: '/accounting/general' },
-    { title: 'Report Jurnal', href: '/accounting/journal-report' },
+    { title: t('nav.accounting'), href: '/accounting/general' },
+    { title: t('nav.journal_report'), href: '/accounting/journal-report' },
 ];
 
 const filterForm = useForm({
@@ -124,10 +127,14 @@ const pdfUrl = computed(() => `/accounting/journal-report/pdf${buildQuery(curren
 
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
-        return 'Tidak ada data';
+        return t('accounting.journal_report.no_data_pagination');
     }
 
-    return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} entries`;
+    return t('accounting.journal_report.showing_text', {
+        from: props.pagination.from,
+        to: props.pagination.to,
+        total: props.pagination.total,
+    });
 });
 
 const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -140,31 +147,31 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
         <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <Heading
-                    title="Report Jurnal"
-                    description="Laporan jurnal umum kronologis dengan filter tanggal, periode, status, dan akun."
+                    :title="t('accounting.journal_report.heading_title')"
+                    :description="t('accounting.journal_report.heading_description')"
                 />
                 <div class="flex flex-wrap items-center gap-2">
-                    <Button as="a" :href="exportUrl" variant="outline" size="sm">Export Excel</Button>
-                    <Button as="a" :href="pdfUrl" variant="outline" size="sm" target="_blank">Print / PDF</Button>
+                    <Button as="a" :href="exportUrl" variant="outline" size="sm">{{ t('common.export_excel') }}</Button>
+                    <Button as="a" :href="pdfUrl" variant="outline" size="sm" target="_blank">{{ t('common.print_pdf') }}</Button>
                 </div>
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
                 <form class="grid gap-4 md:grid-cols-3 lg:grid-cols-6" @submit.prevent="submitFilters">
                     <div class="grid gap-2">
-                        <Label for="date-from">Dari Tanggal</Label>
+                        <Label for="date-from">{{ t('accounting.journal_report.date_from_label') }}</Label>
                         <Input id="date-from" v-model="filterForm.date_from" type="date" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="date-to">Sampai Tanggal</Label>
+                        <Label for="date-to">{{ t('accounting.journal_report.date_to_label') }}</Label>
                         <Input id="date-to" v-model="filterForm.date_to" type="date" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="fiscal-period">Fiscal Period</Label>
+                        <Label for="fiscal-period">{{ t('accounting.journal_report.fiscal_period_label') }}</Label>
                         <select id="fiscal-period" v-model="filterForm.fiscal_period_id" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                            <option value="">Semua Periode</option>
+                            <option value="">{{ t('accounting.journal_report.all_periods_option') }}</option>
                             <option v-for="period in fiscalPeriods" :key="period.id" :value="period.id">
                                 {{ period.code }}
                             </option>
@@ -172,18 +179,18 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="status">Status</Label>
+                        <Label for="status">{{ t('accounting.journal_report.status_label') }}</Label>
                         <select id="status" v-model="filterForm.status" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                            <option value="">Semua Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="posted">Posted</option>
+                            <option value="">{{ t('accounting.journal_report.all_status_option') }}</option>
+                            <option value="draft">{{ t('accounting.journal_form.status_draft') }}</option>
+                            <option value="posted">{{ t('accounting.journal_form.status_posted') }}</option>
                         </select>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="account">Akun</Label>
+                        <Label for="account">{{ t('accounting.journal_report.account_label') }}</Label>
                         <select id="account" v-model="filterForm.account_id" class="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs">
-                            <option value="">Semua Akun</option>
+                            <option value="">{{ t('accounting.journal_report.all_accounts_option') }}</option>
                             <option v-for="account in accounts" :key="account.id" :value="account.id">
                                 {{ account.code }} - {{ account.name }}
                             </option>
@@ -191,13 +198,13 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="search">Cari</Label>
-                        <Input id="search" v-model="filterForm.search" placeholder="Entry number / deskripsi" />
+                        <Label for="search">{{ t('accounting.journal_report.search_label') }}</Label>
+                        <Input id="search" v-model="filterForm.search" :placeholder="t('accounting.journal_report.search_placeholder')" />
                     </div>
 
                     <div class="md:col-span-3 lg:col-span-6 flex gap-2">
-                        <Button type="submit">Filter</Button>
-                        <Button type="button" variant="outline" @click="resetFilters">Reset</Button>
+                        <Button type="submit">{{ t('common.filter') }}</Button>
+                        <Button type="button" variant="outline" @click="resetFilters">{{ t('common.reset') }}</Button>
                     </div>
                 </form>
             </div>
@@ -207,11 +214,11 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
                     <table class="w-full text-sm">
                         <thead class="bg-muted/50 text-left text-muted-foreground">
                             <tr>
-                                <th class="px-4 py-3 font-medium">Entry</th>
-                                <th class="px-4 py-3 font-medium">Akun</th>
-                                <th class="px-4 py-3 font-medium">Deskripsi</th>
-                                <th class="px-4 py-3 text-right font-medium">Debit</th>
-                                <th class="px-4 py-3 text-right font-medium">Credit</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_report.table_entry') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_report.table_account') }}</th>
+                                <th class="px-4 py-3 font-medium">{{ t('accounting.journal_report.table_description') }}</th>
+                                <th class="px-4 py-3 text-right font-medium">{{ t('accounting.journal_report.table_debit') }}</th>
+                                <th class="px-4 py-3 text-right font-medium">{{ t('accounting.journal_report.table_credit') }}</th>
                             </tr>
                         </thead>
                         <template v-for="entry in entries" :key="entry.id">
@@ -239,12 +246,12 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
                         </template>
                         <tbody v-if="!entries.length">
                             <tr>
-                                <td colspan="5" class="py-6 text-center text-muted-foreground">Tidak ada jurnal yang cocok dengan filter.</td>
+                                <td colspan="5" class="py-6 text-center text-muted-foreground">{{ t('accounting.journal_report.no_data_row') }}</td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr class="border-t-2 border-sidebar-border font-semibold">
-                                <td colspan="3" class="px-4 py-3 text-right">Grand Total</td>
+                                <td colspan="3" class="px-4 py-3 text-right">{{ t('accounting.journal_report.grand_total_label') }}</td>
                                 <td class="px-4 py-3 text-right font-mono">{{ formatAmount(totals.debit_total) }}</td>
                                 <td class="px-4 py-3 text-right font-mono">{{ formatAmount(totals.credit_total) }}</td>
                             </tr>
@@ -256,13 +263,13 @@ const formatAmount = (value: number) => value.toLocaleString('id-ID', { minimumF
                     <p class="text-sm text-muted-foreground">{{ paginationText }}</p>
                     <div class="flex items-center gap-2">
                         <Button v-if="pagination.prev_page_url" variant="outline" as-child>
-                            <Link :href="pagination.prev_page_url">Previous</Link>
+                            <Link :href="pagination.prev_page_url">{{ t('common.previous') }}</Link>
                         </Button>
                         <span class="text-sm text-muted-foreground">
-                            Page {{ pagination.current_page }} / {{ pagination.last_page }}
+                            {{ t('accounting.journal_report.page_label', { current: pagination.current_page, total: pagination.last_page }) }}
                         </span>
                         <Button v-if="pagination.next_page_url" variant="outline" as-child>
-                            <Link :href="pagination.next_page_url">Next</Link>
+                            <Link :href="pagination.next_page_url">{{ t('common.next') }}</Link>
                         </Button>
                     </div>
                 </div>

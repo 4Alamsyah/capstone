@@ -41,6 +41,7 @@ class ApInvoice extends Model
         'invoice_date',
         'due_date',
         'currency_code',
+        'carrying_exchange_rate',
         'subtotal',
         'tax_amount',
         'total_amount',
@@ -55,6 +56,7 @@ class ApInvoice extends Model
     protected $casts = [
         'invoice_date' => 'date',
         'due_date' => 'date',
+        'carrying_exchange_rate' => 'decimal:6',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',

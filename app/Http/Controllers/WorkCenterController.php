@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\WorkCenter\StoreWorkCenterRequest;
 use App\Http\Requests\WorkCenter\UpdateWorkCenterRequest;
+use App\Models\Currency;
 use App\Models\WorkCenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,7 @@ class WorkCenterController extends Controller
                 'employee_count'       => $wc->employee_count,
                 'created_at'           => (string) $wc->created_at,
             ])->values(),
+            'defaultCurrency' => Currency::currentDefault(),
             'filters' => [
                 'search' => $search,
             ],

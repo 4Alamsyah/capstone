@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Part\StorePartRequest;
 use App\Http\Requests\Part\UpdatePartRequest;
+use App\Models\Currency;
 use App\Models\Part;
 use App\Models\PartSupplierPrice;
 use App\Models\Stock;
@@ -82,6 +83,7 @@ class PartController extends Controller
         return Inertia::render('parts/List', [
             'parts' => $partItems,
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name']),
+            'defaultCurrency' => Currency::currentDefault(),
             'filters' => [
                 'search' => $search,
             ],
@@ -106,6 +108,7 @@ class PartController extends Controller
         return Inertia::render('parts/Register', [
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name', 'location']),
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'defaultCurrency' => Currency::currentDefault(),
         ]);
     }
 

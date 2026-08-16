@@ -29,8 +29,14 @@ type PaginationMeta = {
     next_page_url: string | null;
 };
 
+type DefaultCurrency = {
+    code: string;
+    symbol: string;
+};
+
 type Props = {
     workCenters: WorkCenterItem[];
+    defaultCurrency: DefaultCurrency;
     filters: { search: string };
     pagination: PaginationMeta;
 };
@@ -127,7 +133,7 @@ const formatPrice = (value: string | null) => {
         return '–';
     }
 
-    return 'Rp ' + Number(value).toLocaleString('id-ID');
+    return `${props.defaultCurrency.symbol} ${Number(value).toLocaleString('id-ID')}`;
 };
 </script>
 

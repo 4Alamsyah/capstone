@@ -32,9 +32,15 @@ type SupplierOption = {
     name: string;
 };
 
+type DefaultCurrency = {
+    code: string;
+    symbol: string;
+};
+
 type Props = {
     warehouses: WarehouseOption[];
     suppliers: SupplierOption[];
+    defaultCurrency: DefaultCurrency;
 };
 
 const props = defineProps<Props>();
@@ -73,11 +79,11 @@ const selectedSuppliers = computed(() => {
 });
 
 const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
+    const formatted = new Intl.NumberFormat('id-ID', {
         maximumFractionDigits: 2,
     }).format(value || 0);
+
+    return `${props.defaultCurrency.symbol} ${formatted}`;
 };
 
 const isSupplierRequired = computed(() => form.category === 'purchase');

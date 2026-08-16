@@ -5,7 +5,9 @@ use App\Http\Controllers\Accounting\ApAgingController;
 use App\Http\Controllers\Accounting\ArAgingController;
 use App\Http\Controllers\Accounting\BalanceSheetController;
 use App\Http\Controllers\Accounting\ChartOfAccountController;
+use App\Http\Controllers\Accounting\ExchangeRateController;
 use App\Http\Controllers\Accounting\FiscalPeriodController;
+use App\Http\Controllers\Accounting\FxRevaluationController;
 use App\Http\Controllers\Accounting\GlSettingController;
 use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\JournalLineController;
@@ -237,6 +239,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/accounting/gl-setting', [GlSettingController::class, 'edit'])->name('accounting.gl-setting.edit');
         Route::patch('/accounting/gl-setting', [GlSettingController::class, 'update'])->name('accounting.gl-setting.update');
+
+        Route::get('/accounting/exchange-rates', [ExchangeRateController::class, 'index'])->name('accounting.exchange-rates.index');
+        Route::post('/accounting/exchange-rates', [ExchangeRateController::class, 'store'])->name('accounting.exchange-rates.store');
+        Route::post('/accounting/exchange-rates/fetch-latest', [ExchangeRateController::class, 'fetchLatest'])->name('accounting.exchange-rates.fetch-latest');
+        Route::delete('/accounting/exchange-rates/{exchangeRate}', [ExchangeRateController::class, 'destroy'])->name('accounting.exchange-rates.destroy');
+
+        Route::get('/accounting/fx-revaluation', [FxRevaluationController::class, 'index'])->name('accounting.fx-revaluation.index');
+        Route::post('/accounting/fx-revaluation', [FxRevaluationController::class, 'store'])->name('accounting.fx-revaluation.store');
 
         Route::get('/accounting/ar-aging', [ArAgingController::class, 'index'])->name('accounting.ar-aging');
 
