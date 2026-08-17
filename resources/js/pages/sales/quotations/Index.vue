@@ -165,6 +165,9 @@ const paginationText = computed(() => {
                                 <td class="py-2 pr-3 font-semibold">{{ Number(quotation.subtotal).toLocaleString() }} {{ quotation.currency_code }}</td>
                                 <td class="py-2 pr-3 text-right">
                                     <div class="flex justify-end gap-2">
+                                        <Button size="sm" variant="outline" as-child>
+                                            <a :href="`/sales/quotations/${quotation.id}/document`" target="_blank" rel="noopener">Download PDF</a>
+                                        </Button>
                                         <Button size="sm" variant="default" @click="generateCustomerOrder(quotation)">
                                             Generate CO
                                         </Button>

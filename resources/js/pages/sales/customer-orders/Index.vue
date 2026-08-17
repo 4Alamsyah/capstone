@@ -124,7 +124,7 @@ const confirmOrder = (order: OrderItem) => {
     useForm({}).post(`/sales/customer-orders/${order.id}/confirm`);
 };
 
-const moveStatus = (order: OrderItem, nextStatus: 3 | 4 | 9) => {
+const moveStatus = (order: OrderItem, nextStatus: 4 | 9) => {
     const targetLabel = props.statusLabels[String(nextStatus)] ?? String(nextStatus);
 
     if (!window.confirm(`Ubah status ${order.co_number} ke ${targetLabel}?`)) {
@@ -311,10 +311,7 @@ const paginationText = computed(() => {
                                             <DropdownMenuItem v-if="order.status === 1" @select.prevent="confirmOrder(order)">
                                                 Confirm
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.status === 2" @select.prevent="moveStatus(order, 3)">
-                                                Picking
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.status === 3" @select.prevent="moveStatus(order, 4)">
+                                            <DropdownMenuItem v-if="order.status === 2 || order.status === 3" @select.prevent="moveStatus(order, 4)">
                                                 Delivered
                                             </DropdownMenuItem>
                                             <DropdownMenuItem v-if="order.status === 4" @select.prevent="moveStatus(order, 9)">

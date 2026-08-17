@@ -123,6 +123,56 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         {{ t('accounting.general.ar_aging_desc') }}
                     </p>
                 </Link>
+
+                <Link
+                    href="/accounting/ap-aging"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">{{ t('accounting.general.ap_aging_title') }}</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ t('accounting.general.ap_aging_desc') }}
+                    </p>
+                </Link>
+
+                <Link
+                    href="/accounting/profit-loss"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">{{ t('accounting.general.profit_loss_title') }}</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ t('accounting.general.profit_loss_desc') }}
+                    </p>
+                </Link>
+
+                <Link
+                    href="/accounting/balance-sheet"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">{{ t('accounting.general.balance_sheet_title') }}</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ t('accounting.general.balance_sheet_desc') }}
+                    </p>
+                </Link>
+
+                <Link
+                    href="/accounting/fx-revaluation"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">{{ t('accounting.general.fx_revaluation_title') }}</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ t('accounting.general.fx_revaluation_desc') }}
+                    </p>
+                </Link>
+
+                <Link
+                    href="/accounting/exchange-rates"
+                    class="rounded-lg border border-sidebar-border/70 bg-card p-5 transition hover:border-primary/40 hover:bg-muted/50"
+                >
+                    <h3 class="text-sm font-semibold text-foreground">{{ t('accounting.general.exchange_rates_title') }}</h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ t('accounting.general.exchange_rates_desc') }}
+                    </p>
+                </Link>
             </div>
         </div>
     </AppLayout>

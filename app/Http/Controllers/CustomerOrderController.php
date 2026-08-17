@@ -552,8 +552,8 @@ class CustomerOrderController extends Controller
     {
         $newStatus = (int) $request->validated()['status'];
 
-        if ($customerOrder->status < CustomerOrder::STATUS_CONFIRMED && $newStatus >= CustomerOrder::STATUS_PICKING) {
-            return to_route('sales.customer-orders.index')->with('error', 'Order harus dikonfirmasi dulu sebelum masuk Picking.');
+        if ($customerOrder->status < CustomerOrder::STATUS_CONFIRMED && $newStatus >= CustomerOrder::STATUS_DELIVERED) {
+            return to_route('sales.customer-orders.index')->with('error', 'Order harus dikonfirmasi dulu sebelum masuk Delivered.');
         }
 
         if ($newStatus <= $customerOrder->status) {

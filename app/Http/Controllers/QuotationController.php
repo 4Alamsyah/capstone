@@ -9,6 +9,7 @@ use App\Models\CustomerOrder;
 use App\Models\CustomerOrderItem;
 use App\Models\Currency;
 use App\Models\Part;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -255,6 +256,24 @@ class QuotationController extends Controller
         $quotation->delete();
 
         return to_route('sales.quotations.index')->with('success', 'Quotation berhasil dihapus.');
+    }
+
+    public function document(CustomerOrder $quotation): \Symfony\Component\HttpFoundation\Response
+    {
+        if ($quotation->status !== CustomerOrder::STATUS_QUOTATION) {
+            abort(404);
+        }
+
+        $quotation->loadMissing([
+            'customer:id,name,address,shipping_address,payment_terms',
+            'items.part:id,part_number,name',
+        ]);
+
+        $pdf = Pdf::loadView('documents.quotation', [
+            'quotation' => $quotation,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('Quotation-' . $quotation->co_number . '.pdf');
     }
 
     public function generateCustomerOrder(CustomerOrder $quotation): RedirectResponse

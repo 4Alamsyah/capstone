@@ -122,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/quotations/{quotation}/edit', [QuotationController::class, 'edit'])->name('sales.quotations.edit');
         Route::put('/quotations/{quotation}', [QuotationController::class, 'update'])->name('sales.quotations.update');
         Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy'])->name('sales.quotations.destroy');
+        Route::get('/quotations/{quotation}/document', [QuotationController::class, 'document'])->name('sales.quotations.document');
 
         Route::get('/invoices', [InvoiceController::class, 'index'])->name('sales.invoices.index');
         Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('sales.invoices.create');

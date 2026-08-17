@@ -42,6 +42,7 @@
         "accounting": "Akuntansi",
         "general": "Umum",
         "journal": "Jurnal",
+        "manual_journal": "Manual Journal",
         "journal_entries": "Entri Jurnal",
         "journal_report": "Laporan Jurnal",
         "journal_lines": "Baris Jurnal",
@@ -117,7 +118,17 @@
             "gl_setting_title": "GL Setting",
             "gl_setting_desc": "Pemetaan Chart of Account untuk auto-posting jurnal AR.",
             "ar_aging_title": "AR Aging",
-            "ar_aging_desc": "Laporan umur piutang customer yang belum lunas."
+            "ar_aging_desc": "Laporan umur piutang customer yang belum lunas.",
+            "ap_aging_title": "AP Aging",
+            "ap_aging_desc": "Laporan umur utang ke supplier yang belum dibayar.",
+            "profit_loss_title": "Laba Rugi",
+            "profit_loss_desc": "Laporan pendapatan dan beban untuk periode tertentu.",
+            "balance_sheet_title": "Neraca",
+            "balance_sheet_desc": "Laporan posisi aset, liabilitas, dan ekuitas perusahaan.",
+            "fx_revaluation_title": "Revaluasi FX",
+            "fx_revaluation_desc": "Revaluasi saldo mata uang asing berdasarkan kurs terbaru.",
+            "exchange_rates_title": "Exchange Rate",
+            "exchange_rates_desc": "Kelola kurs mata uang asing untuk transaksi dan revaluasi."
         },
         "fiscal_periods": {
             "heading_title": "Fiscal Periods",

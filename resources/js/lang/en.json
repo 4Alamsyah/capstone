@@ -42,6 +42,7 @@
         "accounting": "Accounting",
         "general": "General",
         "journal": "Journal",
+        "manual_journal": "Manual Journal",
         "journal_entries": "Journal Entries",
         "journal_report": "Journal Report",
         "journal_lines": "Journal Lines",
@@ -117,7 +118,17 @@
             "gl_setting_title": "GL Setting",
             "gl_setting_desc": "Chart of Account mapping for AR journal auto-posting.",
             "ar_aging_title": "AR Aging",
-            "ar_aging_desc": "Aging report of outstanding customer receivables."
+            "ar_aging_desc": "Aging report of outstanding customer receivables.",
+            "ap_aging_title": "AP Aging",
+            "ap_aging_desc": "Aging report of outstanding supplier payables.",
+            "profit_loss_title": "Profit & Loss",
+            "profit_loss_desc": "Income and expense report for a given period.",
+            "balance_sheet_title": "Balance Sheet",
+            "balance_sheet_desc": "Report of the company's assets, liabilities, and equity.",
+            "fx_revaluation_title": "FX Revaluation",
+            "fx_revaluation_desc": "Revalue foreign currency balances based on the latest rates.",
+            "exchange_rates_title": "Exchange Rate",
+            "exchange_rates_desc": "Manage foreign currency exchange rates for transactions and revaluation."
         },
         "fiscal_periods": {
             "heading_title": "Fiscal Periods",

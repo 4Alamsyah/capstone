@@ -254,6 +254,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                     href: '/accounting/journal-entries',
                     items: [
                         {
+                            title: t('nav.manual_journal'),
+                            href: '/accounting/manual-journal',
+                        },
+                        {
                             title: t('nav.journal_entries'),
                             href: '/accounting/journal-entries',
                         },
