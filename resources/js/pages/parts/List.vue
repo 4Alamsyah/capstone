@@ -38,6 +38,11 @@ type WarehouseOption = {
     name: string;
 };
 
+type SupplierOption = {
+    id: number;
+    name: string;
+};
+
 type PartItem = {
     id: number;
     part_number: string;
@@ -71,6 +76,7 @@ type DefaultCurrency = {
 type Props = {
     parts: PartItem[];
     warehouses: WarehouseOption[];
+    suppliers: SupplierOption[];
     defaultCurrency: DefaultCurrency;
     filters: {
         search: string;
@@ -81,6 +87,8 @@ type Props = {
 const props = defineProps<Props>();
 const editDialogOpen = ref(false);
 const editingPartId = ref<number | null>(null);
+const supplierToAdd = ref<string>('');
+const supplierToAddPrice = ref<number>(0);
 
 const searchForm = useForm({
     search: props.filters.search ?? '',
@@ -124,6 +132,12 @@ const formatInventoryType = (inventoryType: 'material' | 'tool'): string => {
 };
 
 const isEditSupplierRequired = computed(() => editForm.category === 'purchase');
+
+const availableSuppliersToAdd = computed(() => {
+    const addedSupplierIds = new Set(editForm.suppliers.map((supplier) => supplier.supplier_id));
+
+    return props.suppliers.filter((supplier) => !addedSupplierIds.has(supplier.id));
+});
 
 const paginationText = computed(() => {
     if (props.pagination.total === 0) {
@@ -171,6 +185,8 @@ const openEditDialog = (part: PartItem) => {
     editForm.search = props.filters.search ?? '';
     editForm.page = props.pagination.current_page;
     editForm.clearErrors();
+    supplierToAdd.value = '';
+    supplierToAddPrice.value = 0;
     editDialogOpen.value = true;
 };
 
@@ -178,6 +194,33 @@ const closeEditDialog = () => {
     editDialogOpen.value = false;
     editingPartId.value = null;
     editForm.clearErrors();
+    supplierToAdd.value = '';
+    supplierToAddPrice.value = 0;
+};
+
+const addEditSupplier = () => {
+    if (!supplierToAdd.value) {
+        return;
+    }
+
+    const supplierId = Number(supplierToAdd.value);
+    const supplier = props.suppliers.find((item) => item.id === supplierId);
+
+    if (!supplier || editForm.suppliers.some((row) => row.supplier_id === supplierId)) {
+        return;
+    }
+
+    editForm.suppliers.push({
+        supplier_id: supplier.id,
+        supplier_name: supplier.name,
+        purchase_price: Number.isFinite(supplierToAddPrice.value) ? supplierToAddPrice.value : 0,
+    });
+    supplierToAdd.value = '';
+    supplierToAddPrice.value = 0;
+};
+
+const removeEditSupplier = (index: number) => {
+    editForm.suppliers.splice(index, 1);
 };
 
 const getSupplierPriceError = (index: number): string | undefined => {
@@ -306,7 +349,7 @@ const deletePart = (part: PartItem) => {
             </div>
 
             <Dialog :open="editDialogOpen" @update:open="editDialogOpen = $event">
-                <DialogContent class="sm:max-w-3xl">
+                <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>Edit Part</DialogTitle>
                         <DialogDescription>
@@ -387,6 +430,28 @@ const deletePart = (part: PartItem) => {
                                     <template v-else>Opsional untuk Manufacture Part.</template>
                                 </p>
                             </div>
+                            <div class="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+                                <select
+                                    v-model="supplierToAdd"
+                                    class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="">Pilih supplier untuk ditambahkan...</option>
+                                    <option v-for="supplier in availableSuppliersToAdd" :key="supplier.id" :value="supplier.id">
+                                        {{ supplier.name }}
+                                    </option>
+                                </select>
+                                <Input
+                                    v-model.number="supplierToAddPrice"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Purchase Price"
+                                />
+                                <Button type="button" variant="outline" :disabled="!supplierToAdd" @click="addEditSupplier">
+                                    Add Supplier
+                                </Button>
+                            </div>
+
                             <p v-if="!editForm.suppliers.length" class="text-sm text-muted-foreground">
                                 Belum ada supplier terhubung ke part ini.
                             </p>
@@ -395,7 +460,7 @@ const deletePart = (part: PartItem) => {
                             <div
                                 v-for="(supplier, index) in editForm.suppliers"
                                 :key="`${supplier.supplier_id}-${index}`"
-                                class="grid gap-3 rounded-md border border-sidebar-border/50 p-3 md:grid-cols-[1fr_220px]"
+                                class="grid gap-3 rounded-md border border-sidebar-border/50 p-3 md:grid-cols-[1fr_220px_auto]"
                             >
                                 <div class="grid gap-2">
                                     <Label :for="`edit-supplier-price-${supplier.supplier_id}`">
@@ -414,6 +479,12 @@ const deletePart = (part: PartItem) => {
                                         step="0.01"
                                     />
                                     <InputError :message="getSupplierPriceError(index)" />
+                                </div>
+
+                                <div class="flex items-end">
+                                    <Button type="button" variant="ghost" @click="removeEditSupplier(index)">
+                                        Remove
+                                    </Button>
                                 </div>
                             </div>
                         </div>

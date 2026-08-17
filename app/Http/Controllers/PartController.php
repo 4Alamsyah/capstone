@@ -83,6 +83,7 @@ class PartController extends Controller
         return Inertia::render('parts/List', [
             'parts' => $partItems,
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name']),
+            'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
             'defaultCurrency' => Currency::currentDefault(),
             'filters' => [
                 'search' => $search,
