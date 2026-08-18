@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,16 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+type FlashProps = {
+    flash?: {
+        success?: string | null;
+        error?: string | null;
+        warning?: string | null;
+    };
+};
+
+const page = usePage<FlashProps>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Sales', href: '/sales/customer-orders' },
@@ -173,6 +183,16 @@ const paginationText = computed(() => {
                 <Button as-child>
                     <Link href="/sales/invoices/create">+ Register Invoice</Link>
                 </Button>
+            </div>
+
+            <div v-if="page.props.flash?.success" class="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                {{ page.props.flash.success }}
+            </div>
+            <div v-if="page.props.flash?.warning" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                {{ page.props.flash.warning }}
+            </div>
+            <div v-if="page.props.flash?.error" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ page.props.flash.error }}
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">

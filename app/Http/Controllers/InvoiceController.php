@@ -19,12 +19,15 @@ use App\Models\JournalLine;
 use App\Models\Part;
 use App\Models\Payment;
 use App\Models\User;
+use App\Mail\InvoiceSentMail;
 use App\Support\AccountingAuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -370,8 +373,9 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Send the invoice: locks it from further edits and posts the AR/Revenue
-     * billing entry to the General Ledger (DR AR, CR Revenue + Tax Payable).
+     * Send the invoice: locks it from further edits, posts the AR/Revenue
+     * billing entry to the General Ledger (DR AR, CR Revenue + Tax Payable),
+     * and emails the invoice PDF to the customer.
      */
     public function send(Invoice $invoice): RedirectResponse
     {
@@ -380,6 +384,8 @@ class InvoiceController extends Controller
                 'invoice' => 'Invoice hanya bisa dikirim dari status Draft.',
             ]);
         }
+
+        $invoice->loadMissing('customer:id,name,email');
 
         DB::transaction(function () use ($invoice): void {
             $this->postInvoiceBillingToGl($invoice);
@@ -391,7 +397,26 @@ class InvoiceController extends Controller
             AccountingAuditLogger::record('Invoice sent / AR posted', $invoice, $invoice->invoice_number);
         });
 
-        return back()->with('success', 'Invoice berhasil dikirim dan AR sudah tercatat di jurnal.');
+        $customerEmail = $invoice->customer?->email;
+
+        if (! $customerEmail) {
+            return back()->with('success', 'Invoice berhasil dikirim dan AR sudah tercatat di jurnal.')
+                ->with('warning', 'Email tidak terkirim: customer belum punya alamat email.');
+        }
+
+        try {
+            Mail::to($customerEmail)->send(new InvoiceSentMail($invoice));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send invoice email', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('success', 'Invoice berhasil dikirim dan AR sudah tercatat di jurnal.')
+                ->with('warning', 'Gagal mengirim email invoice ke customer. Cek konfigurasi mail server.');
+        }
+
+        return back()->with('success', 'Invoice berhasil dikirim, AR sudah tercatat di jurnal, dan email terkirim ke ' . $customerEmail . '.');
     }
 
     /**
