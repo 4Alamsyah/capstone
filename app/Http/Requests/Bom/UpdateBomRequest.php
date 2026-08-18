@@ -28,7 +28,8 @@ class UpdateBomRequest extends FormRequest
             'items.*.line_type'          => ['required_with:items', 'in:part,operation'],
             'items.*.component_part_id'  => ['nullable', 'integer', 'exists:parts,id'],
             'items.*.work_center_id'     => ['nullable', 'integer', 'exists:work_centers,id'],
-            'items.*.quantity'           => ['required_with:items', 'numeric', 'min:0.0001'],
+            'items.*.uom_id'             => ['nullable', 'integer', 'exists:uoms,id'],
+            'items.*.quantity'           => ['nullable', 'required_if:items.*.line_type,part', 'numeric', 'min:0.0001'],
             'items.*.notes'              => ['nullable', 'string', 'max:500'],
             'items.*.sort_order'         => ['nullable', 'integer', 'min:0'],
         ];

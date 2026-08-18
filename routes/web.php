@@ -26,6 +26,7 @@ use App\Http\Controllers\PurchaseVoucherController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ToolLoanController;
+use App\Http\Controllers\UomController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WorkCenterController;
 use App\Http\Controllers\WorkOrderController;
@@ -59,6 +60,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/warehouses/quick-create', [WarehouseController::class, 'quickStore'])->name('parts.warehouses.quick-create');
         Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('parts.warehouses.update');
         Route::delete('/warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('parts.warehouses.destroy');
+
+        Route::get('/uoms', [UomController::class, 'index'])->name('parts.uoms.index');
+        Route::post('/uoms', [UomController::class, 'store'])->name('parts.uoms.store');
+        Route::post('/uoms/quick-create', [UomController::class, 'quickStore'])->name('parts.uoms.quick-create');
+        Route::put('/uoms/{uom}', [UomController::class, 'update'])->name('parts.uoms.update');
+        Route::delete('/uoms/{uom}', [UomController::class, 'destroy'])->name('parts.uoms.destroy');
     });
 
     Route::middleware('permission:menu.suppliers')->group(function (): void {

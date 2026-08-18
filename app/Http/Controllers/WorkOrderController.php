@@ -380,6 +380,47 @@ class WorkOrderController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
+            $goodQuantity = (int) round((float) $validated['good_quantity']);
+
+            if ($goodQuantity > 0) {
+                if (empty($validated['warehouse_id'])) {
+                    throw ValidationException::withMessages([
+                        'warehouse_id' => 'Warehouse wajib dipilih untuk menyimpan hasil produksi.',
+                    ]);
+                }
+
+                $warehouseId = (int) $validated['warehouse_id'];
+                $finishedPartId = $workOrder->bom->part_id;
+
+                $finishedStock = Stock::query()->firstOrCreate(
+                    ['part_id' => $finishedPartId, 'warehouse_id' => $warehouseId],
+                    ['quantity' => 0],
+                );
+
+                $finishedStock->increment('quantity', $goodQuantity);
+
+                StockMovement::create([
+                    'part_id' => $finishedPartId,
+                    'warehouse_id' => $warehouseId,
+                    'work_order_id' => $workOrder->id,
+                    'work_order_report_id' => $report->id,
+                    'movement_type' => 'produce',
+                    'quantity_change' => $goodQuantity,
+                    'notes' => 'Produced by '.$workOrder->wo_number,
+                ]);
+
+                WorkOrderReportProduction::create([
+                    'work_order_report_id' => $report->id,
+                    'work_order_id' => $workOrder->id,
+                    'bom_item_id' => null,
+                    'part_id' => $finishedPartId,
+                    'bom_id' => $workOrder->bom_id,
+                    'warehouse_id' => $warehouseId,
+                    'good_quantity' => $goodQuantity,
+                    'reject_quantity' => (int) round((float) ($validated['reject_quantity'] ?? 0)),
+                ]);
+            }
+
             $this->processComponentTree(
                 $workOrder->bom->items,
                 $validated['components'] ?? [],

@@ -9,6 +9,7 @@
         "inventory": "Inventory",
         "warehouse": "Gudang",
         "stock": "Stok",
+        "uom": "Satuan",
         "manufacturing": "Manufaktur",
         "work_order": "Work Order",
         "mo_list": "Daftar MO",

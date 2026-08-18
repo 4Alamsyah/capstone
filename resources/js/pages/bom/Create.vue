@@ -15,6 +15,7 @@ type PartOption = {
     part_number: string;
     name: string;
     has_bom: boolean;
+    default_uom_id: number | null;
 };
 
 type WorkCenterOption = {
@@ -23,9 +24,16 @@ type WorkCenterOption = {
     price_per_operation: string | null;
 };
 
+type UomOption = {
+    id: number;
+    code: string;
+    name: string;
+};
+
 type Props = {
     parts: PartOption[];
     workCenters: WorkCenterOption[];
+    uoms: UomOption[];
     preselectedPartId: number | null;
 };
 
@@ -40,6 +48,7 @@ type LineItem = {
     line_type: 'part' | 'operation';
     component_part_id: number | null;
     work_center_id: number | null;
+    uom_id: number | null;
     quantity: string;
     notes: string;
 };
@@ -58,9 +67,18 @@ const addItem = (type: 'part' | 'operation') => {
         line_type: type,
         component_part_id: null,
         work_center_id: null,
-        quantity: '1',
+        uom_id: null,
+        quantity: type === 'part' ? '1' : '',
         notes: '',
     });
+};
+
+// When a component part is picked on a material line, default its UOM from
+// the part's own default UOM (still editable per line afterwards).
+const onComponentPartSelected = (item: LineItem, partId: number | null) => {
+    if (!item.uom_id) {
+        item.uom_id = props.parts.find((p) => p.id === partId)?.default_uom_id ?? null;
+    }
 };
 
 const removeItem = (index: number) => {
@@ -204,7 +222,7 @@ const submit = () => {
                             :key="idx"
                             class="rounded-md border border-sidebar-border/50 p-3"
                         >
-                            <div class="grid items-start gap-3 sm:grid-cols-[auto_1fr_120px_1fr_auto]">
+                            <div class="grid items-start gap-3 sm:grid-cols-[auto_1fr_190px_1fr_auto]">
                                 <!-- Type badge -->
                                 <div class="flex items-center pt-1">
                                     <span
@@ -222,7 +240,7 @@ const submit = () => {
                                         v-if="item.line_type === 'part'"
                                         v-model="item.component_part_id"
                                         class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                        @change="fetchBomTree(idx, item.component_part_id)"
+                                        @change="fetchBomTree(idx, item.component_part_id); onComponentPartSelected(item, item.component_part_id)"
                                     >
                                         <option :value="null">— pilih part —</option>
                                         <option v-for="p in parts" :key="p.id" :value="p.id">
@@ -241,11 +259,21 @@ const submit = () => {
                                     </select>
                                 </div>
 
-                                <!-- Quantity -->
-                                <div class="grid gap-1">
-                                    <Label class="text-xs">Qty</Label>
-                                    <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" />
+                                <!-- Quantity + UOM (material lines only; operations don't consume/produce a quantity) -->
+                                <div v-if="item.line_type === 'part'" class="grid gap-1">
+                                    <Label class="text-xs">Qty / UOM</Label>
+                                    <div class="flex gap-1">
+                                        <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" class="w-20" />
+                                        <select
+                                            v-model="item.uom_id"
+                                            class="w-full rounded-md border border-input bg-transparent px-2 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            <option :value="null">— satuan —</option>
+                                            <option v-for="u in uoms" :key="u.id" :value="u.id">{{ u.code }}</option>
+                                        </select>
+                                    </div>
                                 </div>
+                                <div v-else />
 
                                 <!-- Notes -->
                                 <div class="grid gap-1">

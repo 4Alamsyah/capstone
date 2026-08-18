@@ -15,6 +15,7 @@ class BomItem extends Model
         'line_type',
         'component_part_id',
         'work_center_id',
+        'uom_id',
         'quantity',
         'notes',
         'sort_order',
@@ -41,5 +42,10 @@ class BomItem extends Model
     public function workCenter(): BelongsTo
     {
         return $this->belongsTo(WorkCenter::class);
+    }
+
+    public function uom(): BelongsTo
+    {
+        return $this->belongsTo(Uom::class);
     }
 }

@@ -32,6 +32,12 @@ type SupplierOption = {
     name: string;
 };
 
+type UomOption = {
+    id: number;
+    code: string;
+    name: string;
+};
+
 type DefaultCurrency = {
     code: string;
     symbol: string;
@@ -40,6 +46,7 @@ type DefaultCurrency = {
 type Props = {
     warehouses: WarehouseOption[];
     suppliers: SupplierOption[];
+    uoms: UomOption[];
     defaultCurrency: DefaultCurrency;
 };
 
@@ -62,6 +69,7 @@ const form = useForm({
     name: '',
     category: 'purchase',
     inventory_type: 'material' as 'material' | 'tool',
+    default_uom_id: null as number | null,
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -284,6 +292,21 @@ const submitQuickWarehouse = async () => {
                             <option value="tool">Tool (Borrow/Return)</option>
                         </select>
                         <InputError :message="form.errors.inventory_type" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="default_uom_id">Default UOM</Label>
+                        <select
+                            id="default_uom_id"
+                            v-model="form.default_uom_id"
+                            class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option :value="null">- pilih satuan -</option>
+                            <option v-for="uom in uoms" :key="uom.id" :value="uom.id">
+                                {{ uom.code }} - {{ uom.name }}
+                            </option>
+                        </select>
+                        <InputError :message="form.errors.default_uom_id" />
                     </div>
 
                     <div class="grid gap-2 md:col-span-2">

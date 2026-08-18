@@ -7,6 +7,7 @@ use App\Http\Requests\Bom\UpdateBomRequest;
 use App\Models\Bom;
 use App\Models\BomItem;
 use App\Models\Part;
+use App\Models\Uom;
 use App\Models\WorkCenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -78,6 +79,7 @@ class BomController extends Controller
         return Inertia::render('bom/Create', [
             'parts'       => $this->partOptionsWithBomFlag(),
             'workCenters' => WorkCenter::orderBy('name')->get(['id', 'name', 'price_per_operation']),
+            'uoms'        => Uom::orderBy('code')->get(['id', 'code', 'name']),
             'preselectedPartId' => $preselectedPartId > 0 ? $preselectedPartId : null,
         ]);
     }
@@ -104,7 +106,8 @@ class BomController extends Controller
                     'line_type'          => $item['line_type'],
                     'component_part_id'  => $item['component_part_id'] ?? null,
                     'work_center_id'     => $item['work_center_id'] ?? null,
-                    'quantity'           => $item['quantity'],
+                    'uom_id'             => $item['line_type'] === 'part' ? ($item['uom_id'] ?? null) : null,
+                    'quantity'           => $item['line_type'] === 'part' ? $item['quantity'] : null,
                     'notes'              => $item['notes'] ?? null,
                     'sort_order'         => $item['sort_order'] ?? $i,
                 ]);
@@ -123,6 +126,7 @@ class BomController extends Controller
             'bom'         => $this->buildEditableBomTree($bom, ''),
             'parts'       => $this->partOptionsWithBomFlag(),
             'workCenters' => WorkCenter::orderBy('name')->get(['id', 'name', 'price_per_operation']),
+            'uoms'        => Uom::orderBy('code')->get(['id', 'code', 'name']),
         ]);
     }
 
@@ -150,7 +154,8 @@ class BomController extends Controller
                     'line_type'          => $item['line_type'],
                     'component_part_id'  => $item['component_part_id'] ?? null,
                     'work_center_id'     => $item['work_center_id'] ?? null,
-                    'quantity'           => $item['quantity'],
+                    'uom_id'             => $item['line_type'] === 'part' ? ($item['uom_id'] ?? null) : null,
+                    'quantity'           => $item['line_type'] === 'part' ? $item['quantity'] : null,
                     'notes'              => $item['notes'] ?? null,
                     'sort_order'         => $item['sort_order'] ?? $i,
                 ]);
@@ -195,12 +200,13 @@ class BomController extends Controller
     {
         $partIdsWithBom = Bom::where('is_active', true)->pluck('part_id')->unique();
 
-        return Part::orderBy('name')->get(['id', 'part_number', 'name'])
+        return Part::orderBy('name')->get(['id', 'part_number', 'name', 'default_uom_id'])
             ->map(fn (Part $part): array => [
-                'id'          => $part->id,
-                'part_number' => $part->part_number,
-                'name'        => $part->name,
-                'has_bom'     => $partIdsWithBom->contains($part->id),
+                'id'              => $part->id,
+                'part_number'     => $part->part_number,
+                'name'            => $part->name,
+                'has_bom'         => $partIdsWithBom->contains($part->id),
+                'default_uom_id'  => $part->default_uom_id,
             ]);
     }
 
@@ -225,7 +231,7 @@ class BomController extends Controller
 
         $visited[] = $part->id;
 
-        $bom->load(['items.componentPart', 'items.workCenter']);
+        $bom->load(['items.componentPart', 'items.workCenter', 'items.uom']);
 
         return [
             'bom_id'   => $bom->id,
@@ -236,7 +242,8 @@ class BomController extends Controller
                 'label'      => $item->line_type === 'part'
                     ? ($item->componentPart?->part_number . ' – ' . $item->componentPart?->name)
                     : $item->workCenter?->name,
-                'quantity'   => (string) $item->quantity,
+                'quantity'   => $item->quantity !== null ? (string) $item->quantity : null,
+                'uom'        => $item->uom?->code,
                 'notes'      => $item->notes,
                 'sub_bom'    => $item->line_type === 'part' && $item->componentPart
                     ? $this->buildPartBomTree($item->componentPart, $visited)
@@ -257,7 +264,7 @@ class BomController extends Controller
      */
     private function buildEditableBomTree(Bom $bom, string $code, array $visited = []): array
     {
-        $bom->load(['part', 'items.componentPart', 'items.workCenter']);
+        $bom->load(['part', 'items.componentPart', 'items.workCenter', 'items.uom']);
         $visited = [...$visited, $bom->part_id];
 
         $childIndex = 1;
@@ -281,7 +288,9 @@ class BomController extends Controller
                 'line_type'         => $item->line_type,
                 'component_part_id' => $item->component_part_id,
                 'work_center_id'    => $item->work_center_id,
-                'quantity'          => (string) $item->quantity,
+                'uom_id'            => $item->uom_id,
+                'uom_code'          => $item->uom?->code,
+                'quantity'          => $item->quantity !== null ? (string) $item->quantity : null,
                 'notes'             => $item->notes,
                 'sort_order'        => $item->sort_order,
                 'label'             => $item->line_type === 'part'

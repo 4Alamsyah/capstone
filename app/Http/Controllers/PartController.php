@@ -11,6 +11,7 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\ToolLoan;
+use App\Models\Uom;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class PartController extends Controller
         $search = trim((string) $request->string('search'));
 
         $parts = Part::query()
-            ->with(['supplierPrices.supplier'])
+            ->with(['supplierPrices.supplier', 'defaultUom'])
             ->withSum('stocks as total_stock', 'quantity')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($innerQuery) use ($search): void {
@@ -53,6 +54,8 @@ class PartController extends Controller
                     'name' => $part->name,
                     'category' => $part->category,
                     'inventory_type' => $part->inventory_type,
+                    'default_uom_id' => $part->default_uom_id,
+                    'default_uom_code' => $part->defaultUom?->code,
                     'description' => $part->description,
                     'selling_price' => (float) $part->selling_price,
                     'safety_stock' => (int) $part->safety_stock,
@@ -84,6 +87,7 @@ class PartController extends Controller
             'parts' => $partItems,
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name']),
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'uoms' => Uom::query()->orderBy('code')->get(['id', 'code', 'name']),
             'defaultCurrency' => Currency::currentDefault(),
             'filters' => [
                 'search' => $search,
@@ -109,6 +113,7 @@ class PartController extends Controller
         return Inertia::render('parts/Register', [
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'code', 'name', 'location']),
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'uoms' => Uom::query()->orderBy('code')->get(['id', 'code', 'name']),
             'defaultCurrency' => Currency::currentDefault(),
         ]);
     }
@@ -126,6 +131,7 @@ class PartController extends Controller
                 'name' => $validated['name'],
                 'category' => $validated['category'],
                 'inventory_type' => $validated['inventory_type'],
+                'default_uom_id' => $validated['default_uom_id'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'selling_price' => $validated['selling_price'],
                 'safety_stock' => $validated['safety_stock'],
@@ -171,6 +177,7 @@ class PartController extends Controller
                 'name' => $validated['name'],
                 'category' => $validated['category'],
                 'inventory_type' => $validated['inventory_type'],
+                'default_uom_id' => $validated['default_uom_id'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'selling_price' => $validated['selling_price'],
                 'safety_stock' => $validated['safety_stock'],

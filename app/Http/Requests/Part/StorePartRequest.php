@@ -27,6 +27,7 @@ class StorePartRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'in:purchase,manufacture'],
             'inventory_type' => ['required', 'string', 'in:material,tool'],
+            'default_uom_id' => ['nullable', 'integer', 'exists:uoms,id'],
             'description' => ['nullable', 'string'],
             'selling_price' => ['required', 'numeric', 'min:0'],
             'safety_stock' => ['required', 'integer', 'min:0'],

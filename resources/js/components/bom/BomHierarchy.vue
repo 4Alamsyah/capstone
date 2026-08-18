@@ -5,7 +5,8 @@ export type BomTreeItem = {
     id: number;
     line_type: 'part' | 'operation';
     label: string | null;
-    quantity: string;
+    quantity: string | null;
+    uom: string | null;
     notes: string | null;
     sub_bom: BomTreeNode | null;
 };
@@ -34,7 +35,9 @@ defineProps<{
                         {{ item.line_type === 'part' ? 'Part' : 'Op' }}
                     </span>
                     <span>{{ item.label ?? '–' }}</span>
-                    <span class="text-muted-foreground">× {{ formatQty(item.quantity) }}</span>
+                    <span v-if="item.line_type === 'part'" class="text-muted-foreground">
+                        × {{ formatQty(item.quantity ?? '0') }}{{ item.uom ? ` ${item.uom}` : '' }}
+                    </span>
                 </div>
                 <BomHierarchy v-if="item.sub_bom" :tree="item.sub_bom" class="mt-1.5" />
             </li>

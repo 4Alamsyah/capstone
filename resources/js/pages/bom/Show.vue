@@ -16,6 +16,7 @@ type PartOption = {
     part_number: string;
     name: string;
     has_bom: boolean;
+    default_uom_id: number | null;
 };
 
 type WorkCenterOption = {
@@ -24,12 +25,20 @@ type WorkCenterOption = {
     price_per_operation: string | null;
 };
 
+type UomOption = {
+    id: number;
+    code: string;
+    name: string;
+};
+
 type EditableBomLineItem = {
     id: number;
     line_type: 'part' | 'operation';
     component_part_id: number | null;
     work_center_id: number | null;
-    quantity: string;
+    uom_id: number | null;
+    uom_code: string | null | undefined;
+    quantity: string | null;
     notes: string | null;
     sort_order: number;
     label: string | null | undefined;
@@ -52,6 +61,7 @@ type Props = {
     bom: EditableBomNode;
     parts: PartOption[];
     workCenters: WorkCenterOption[];
+    uoms: UomOption[];
 };
 
 const props = defineProps<Props>();
@@ -172,6 +182,7 @@ type LineItem = {
     line_type: 'part' | 'operation';
     component_part_id: number | null;
     work_center_id: number | null;
+    uom_id: number | null;
     quantity: string;
     notes: string;
     sort_order: number;
@@ -196,7 +207,8 @@ const seedEditForm = (node: EditableBomNode) => {
         line_type: item.line_type,
         component_part_id: item.component_part_id,
         work_center_id: item.work_center_id,
-        quantity: item.quantity,
+        uom_id: item.uom_id,
+        quantity: item.quantity ?? (item.line_type === 'part' ? '1' : ''),
         notes: item.notes ?? '',
         sort_order: item.sort_order,
     }));
@@ -240,10 +252,19 @@ const addItem = (type: 'part' | 'operation') => {
         line_type: type,
         component_part_id: null,
         work_center_id: null,
-        quantity: '1',
+        uom_id: null,
+        quantity: type === 'part' ? '1' : '',
         notes: '',
         sort_order: editForm.items.length,
     });
+};
+
+// When a component part is picked on a material line, default its UOM from
+// the part's own default UOM (still editable per line afterwards).
+const onComponentPartSelected = (item: LineItem, partId: number | null) => {
+    if (!item.uom_id) {
+        item.uom_id = props.parts.find((p) => p.id === partId)?.default_uom_id ?? null;
+    }
 };
 
 const removeItem = (index: number) => {
@@ -411,13 +432,14 @@ const deleteBom = () => {
                                             <th class="py-2 pr-3">Type</th>
                                             <th class="py-2 pr-3">Component / Operation</th>
                                             <th class="py-2 pr-3">Qty</th>
+                                            <th class="py-2 pr-3">UOM</th>
                                             <th class="py-2 pr-3">Notes</th>
                                             <th class="py-2"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr v-if="selectedNode.items.length === 0">
-                                            <td colspan="6" class="py-6 text-center text-muted-foreground">No items.</td>
+                                            <td colspan="7" class="py-6 text-center text-muted-foreground">No items.</td>
                                         </tr>
                                         <tr
                                             v-for="(item, idx) in selectedNode.items"
@@ -434,7 +456,8 @@ const deleteBom = () => {
                                                 </span>
                                             </td>
                                             <td class="py-2 pr-3">{{ item.label ?? '–' }}</td>
-                                            <td class="py-2 pr-3">{{ formatQty(item.quantity) }}</td>
+                                            <td class="py-2 pr-3">{{ item.line_type === 'part' ? formatQty(item.quantity ?? '0') : '–' }}</td>
+                                            <td class="py-2 pr-3">{{ item.line_type === 'part' ? (item.uom_code ?? '–') : '–' }}</td>
                                             <td class="py-2 pr-3">{{ item.notes ?? '–' }}</td>
                                             <td class="py-2">
                                                 <Button
@@ -539,7 +562,7 @@ const deleteBom = () => {
                                         :key="idx"
                                         class="rounded-md border border-sidebar-border/50 p-3"
                                     >
-                                        <div class="grid items-start gap-3 sm:grid-cols-[auto_1fr_120px_1fr_auto]">
+                                        <div class="grid items-start gap-3 sm:grid-cols-[auto_1fr_190px_1fr_auto]">
                                             <div class="flex items-center pt-1">
                                                 <span
                                                     class="inline-flex rounded px-2 py-0.5 text-xs font-semibold"
@@ -555,7 +578,7 @@ const deleteBom = () => {
                                                     v-if="item.line_type === 'part'"
                                                     v-model="item.component_part_id"
                                                     class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                    @change="fetchBomTree(idx, item.component_part_id)"
+                                                    @change="fetchBomTree(idx, item.component_part_id); onComponentPartSelected(item, item.component_part_id)"
                                                 >
                                                     <option :value="null">— pilih part —</option>
                                                     <option v-for="p in parts" :key="p.id" :value="p.id">
@@ -574,10 +597,20 @@ const deleteBom = () => {
                                                 </select>
                                             </div>
 
-                                            <div class="grid gap-1">
-                                                <Label class="text-xs">Qty</Label>
-                                                <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" />
+                                            <div v-if="item.line_type === 'part'" class="grid gap-1">
+                                                <Label class="text-xs">Qty / UOM</Label>
+                                                <div class="flex gap-1">
+                                                    <Input v-model="item.quantity" type="number" min="0.0001" step="any" placeholder="1" class="w-20" />
+                                                    <select
+                                                        v-model="item.uom_id"
+                                                        class="w-full rounded-md border border-input bg-transparent px-2 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                    >
+                                                        <option :value="null">— satuan —</option>
+                                                        <option v-for="u in uoms" :key="u.id" :value="u.id">{{ u.code }}</option>
+                                                    </select>
+                                                </div>
                                             </div>
+                                            <div v-else />
 
                                             <div class="grid gap-1">
                                                 <Label class="text-xs">Notes</Label>

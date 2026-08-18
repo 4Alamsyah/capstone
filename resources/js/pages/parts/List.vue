@@ -43,12 +43,20 @@ type SupplierOption = {
     name: string;
 };
 
+type UomOption = {
+    id: number;
+    code: string;
+    name: string;
+};
+
 type PartItem = {
     id: number;
     part_number: string;
     name: string;
     category: 'purchase' | 'manufacture';
     inventory_type: 'material' | 'tool';
+    default_uom_id: number | null;
+    default_uom_code: string | null;
     description: string | null;
     selling_price: number;
     safety_stock: number;
@@ -77,6 +85,7 @@ type Props = {
     parts: PartItem[];
     warehouses: WarehouseOption[];
     suppliers: SupplierOption[];
+    uoms: UomOption[];
     defaultCurrency: DefaultCurrency;
     filters: {
         search: string;
@@ -99,6 +108,7 @@ const editForm = useForm({
     name: '',
     category: 'purchase' as 'purchase' | 'manufacture',
     inventory_type: 'material' as 'material' | 'tool',
+    default_uom_id: null as number | null,
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -168,6 +178,7 @@ const openEditDialog = (part: PartItem) => {
     editForm.name = part.name;
     editForm.category = part.category;
     editForm.inventory_type = part.inventory_type;
+    editForm.default_uom_id = part.default_uom_id;
     editForm.description = part.description ?? '';
     editForm.selling_price = part.selling_price;
     editForm.safety_stock = part.safety_stock;
@@ -285,6 +296,7 @@ const deletePart = (part: PartItem) => {
                             <th class="px-4 py-3 font-medium">Part Name</th>
                             <th class="px-4 py-3 font-medium">Category</th>
                             <th class="px-4 py-3 font-medium">Inventory Type</th>
+                            <th class="px-4 py-3 font-medium">UOM</th>
                             <th class="px-4 py-3 font-medium">Supplier Prices</th>
                             <th class="px-4 py-3 font-medium">Selling Price</th>
                             <th class="px-4 py-3 font-medium">Safety Stock</th>
@@ -303,6 +315,7 @@ const deletePart = (part: PartItem) => {
                             </td>
                             <td class="px-4 py-3">{{ formatCategory(part.category) }}</td>
                             <td class="px-4 py-3">{{ formatInventoryType(part.inventory_type) }}</td>
+                            <td class="px-4 py-3">{{ part.default_uom_code ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <ul v-if="part.suppliers.length" class="space-y-1">
                                     <li v-for="supplier in part.suppliers" :key="supplier.id">
@@ -327,7 +340,7 @@ const deletePart = (part: PartItem) => {
                             </td>
                         </tr>
                         <tr v-if="!parts.length">
-                            <td colspan="9" class="px-4 py-8 text-center text-muted-foreground">
+                            <td colspan="10" class="px-4 py-8 text-center text-muted-foreground">
                                 Data part tidak ditemukan.
                             </td>
                         </tr>
@@ -395,6 +408,21 @@ const deletePart = (part: PartItem) => {
                                     <option value="tool">Tool (Borrow/Return)</option>
                                 </select>
                                 <InputError :message="editForm.errors.inventory_type" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="edit-default-uom">Default UOM</Label>
+                                <select
+                                    id="edit-default-uom"
+                                    v-model="editForm.default_uom_id"
+                                    class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option :value="null">- pilih satuan -</option>
+                                    <option v-for="uom in uoms" :key="uom.id" :value="uom.id">
+                                        {{ uom.code }} - {{ uom.name }}
+                                    </option>
+                                </select>
+                                <InputError :message="editForm.errors.default_uom_id" />
                             </div>
 
                             <div class="grid gap-2 md:col-span-2">

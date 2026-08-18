@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -26,10 +27,19 @@ class Part extends Model
         'name',
         'category',
         'inventory_type',
+        'default_uom_id',
         'description',
         'selling_price',
         'safety_stock',
     ];
+
+    /**
+     * The unit of measure this part is stocked/produced in by default.
+     */
+    public function defaultUom(): BelongsTo
+    {
+        return $this->belongsTo(Uom::class, 'default_uom_id');
+    }
 
     /**
      * Part can have many supplier prices.

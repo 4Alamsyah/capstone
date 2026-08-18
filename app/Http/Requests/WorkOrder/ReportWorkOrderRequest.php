@@ -19,6 +19,7 @@ class ReportWorkOrderRequest extends FormRequest
         return [
             'good_quantity' => ['required', 'numeric', 'min:0'],
             'reject_quantity' => ['nullable', 'numeric', 'min:0'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'components' => ['nullable', 'array'],
             'components.*.warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],

@@ -94,6 +94,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                             title: t('nav.stock'),
                             href: '/parts/stock',
                         },
+                        {
+                            title: t('nav.uom'),
+                            href: '/parts/uoms',
+                        },
                     ],
                 },
             ],

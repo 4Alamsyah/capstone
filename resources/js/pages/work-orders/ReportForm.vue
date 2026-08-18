@@ -81,6 +81,7 @@ seedComponents(props.components, initialComponents);
 const form = useForm({
     good_quantity: formatQty(props.workOrder.quantity) || '0',
     reject_quantity: '0',
+    warehouse_id: null as number | null,
     notes: '',
     components: initialComponents,
 });
@@ -189,6 +190,24 @@ const submit = () => {
                             <Label for="reject_quantity">Reject Quantity</Label>
                             <Input id="reject_quantity" v-model="form.reject_quantity" type="number" min="0" step="any" />
                             <InputError :message="form.errors.reject_quantity" />
+                        </div>
+
+                        <div class="grid gap-2 sm:col-span-2">
+                            <Label for="warehouse_id">Warehouse Hasil Produksi</Label>
+                            <select
+                                id="warehouse_id"
+                                v-model="form.warehouse_id"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option :value="null">- pilih warehouse -</option>
+                                <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+                                    {{ warehouse.code }} - {{ warehouse.name }}
+                                </option>
+                            </select>
+                            <p class="text-xs text-muted-foreground">
+                                Stok {{ workOrder.bom.part.part_number }} akan bertambah di warehouse ini sesuai Good Quantity.
+                            </p>
+                            <InputError :message="form.errors.warehouse_id" />
                         </div>
 
                         <div class="grid gap-2 sm:col-span-2">
