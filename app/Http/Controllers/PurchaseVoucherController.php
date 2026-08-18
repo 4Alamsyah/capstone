@@ -72,6 +72,7 @@ class PurchaseVoucherController extends Controller
     public function create(): Response
     {
         $parts = Part::withSum('stocks as total_stock', 'quantity')
+            ->where('category', Part::CATEGORY_PURCHASE)
             ->whereDoesntHave('boms', fn ($query) => $query->where('is_active', true))
             ->select('id', 'part_number', 'name', 'safety_stock')
             ->get();
@@ -101,7 +102,7 @@ class PurchaseVoucherController extends Controller
 
                 if (! $part->isPurchasable()) {
                     throw ValidationException::withMessages([
-                        'lines' => "Part {$part->part_number} - {$part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
+                        'lines' => "Part {$part->part_number} - {$part->name} bukan part purchase (kategori manufacture dan/atau punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
                     ]);
                 }
 
@@ -166,7 +167,7 @@ class PurchaseVoucherController extends Controller
                     'unit' => $item->unit,
                     'stock_on_hand' => (float) $item->stock_on_hand,
                     'remarks' => $item->remarks,
-                    'is_purchasable' => $item->part->boms->isEmpty(),
+                    'is_purchasable' => $item->part->category === Part::CATEGORY_PURCHASE && $item->part->boms->isEmpty(),
                     'supplier_prices' => $item->part->supplierPrices
                         ->map(fn (PartSupplierPrice $price): array => [
                             'supplier_id' => $price->supplier_id,
@@ -279,7 +280,7 @@ class PurchaseVoucherController extends Controller
 
                 if (! $pvItem->part->isPurchasable()) {
                     throw ValidationException::withMessages([
-                        'lines' => "Part {$pvItem->part->part_number} - {$pvItem->part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh dibuatkan PO.",
+                        'lines' => "Part {$pvItem->part->part_number} - {$pvItem->part->name} bukan part purchase (kategori manufacture dan/atau punya BOM aktif) dan tidak boleh dibuatkan PO.",
                     ]);
                 }
 
@@ -324,6 +325,7 @@ class PurchaseVoucherController extends Controller
     public function stockRecommendations(): Response
     {
         $parts = Part::where('safety_stock', '>', 0)
+            ->where('category', Part::CATEGORY_PURCHASE)
             ->whereDoesntHave('boms', fn ($query) => $query->where('is_active', true))
             ->withSum('stocks as total_stock', 'quantity')
             ->select('id', 'part_number', 'name', 'safety_stock')
@@ -372,7 +374,7 @@ class PurchaseVoucherController extends Controller
 
                 if (! $part->isPurchasable()) {
                     throw ValidationException::withMessages([
-                        'lines' => "Part {$part->part_number} - {$part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
+                        'lines' => "Part {$part->part_number} - {$part->name} bukan part purchase (kategori manufacture dan/atau punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
                     ]);
                 }
 

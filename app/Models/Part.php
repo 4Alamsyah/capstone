@@ -17,6 +17,10 @@ class Part extends Model
 
     public const INVENTORY_TYPE_TOOL = 'tool';
 
+    public const CATEGORY_PURCHASE = 'purchase';
+
+    public const CATEGORY_MANUFACTURE = 'manufacture';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -100,12 +104,15 @@ class Part extends Model
     }
 
     /**
-     * Whether this part is bought rather than made. A part with an active BOM is
-     * manufactured via Work Order and must never be sourced through a Purchase
-     * Voucher / Purchase Order.
+     * Whether this part is bought rather than made. Requires both: the part must be
+     * explicitly declared category=purchase (the flag that also gates whether it
+     * needs a supplier price on file), and it must not have an active BOM of its
+     * own - a part with an active BOM is manufactured via Work Order and must never
+     * be sourced through a Purchase Voucher / Purchase Order, regardless of how its
+     * category happens to be set.
      */
     public function isPurchasable(): bool
     {
-        return $this->activeBom() === null;
+        return $this->category === self::CATEGORY_PURCHASE && $this->activeBom() === null;
     }
 }

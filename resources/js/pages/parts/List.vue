@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -208,6 +208,26 @@ const closeEditDialog = () => {
     supplierToAdd.value = '';
     supplierToAddPrice.value = 0;
 };
+
+// Right-clicking a part anywhere in the app ("Edit Part") lands here via
+// /parts?search=...&edit=<id> - auto-open that part's edit dialog on arrival.
+onMounted(() => {
+    const editId = new URLSearchParams(window.location.search).get('edit');
+
+    if (!editId) {
+        return;
+    }
+
+    const partToEdit = props.parts.find((part) => part.id === Number(editId));
+
+    if (partToEdit) {
+        openEditDialog(partToEdit);
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('edit');
+    window.history.replaceState({}, '', url);
+});
 
 const addEditSupplier = () => {
     if (!supplierToAdd.value) {

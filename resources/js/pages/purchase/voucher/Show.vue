@@ -2,6 +2,7 @@
 import { Head, router, useForm, Link } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
+import PartContextTrigger from '@/components/PartContextTrigger.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -245,10 +246,12 @@ const convertToPo = () => {
                                 class="border-b border-sidebar-border/40 last:border-0"
                             >
                                 <td class="py-2 pr-3 font-mono text-xs">
-                                    {{ item.part.part_number }} — {{ item.part.name }}
-                                    <span v-if="!item.is_purchasable" class="ml-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-700">
-                                        Manufacture — tidak bisa di-PO
-                                    </span>
+                                    <PartContextTrigger :part-id="item.part.id" :part-number="item.part.part_number">
+                                        {{ item.part.part_number }} — {{ item.part.name }}
+                                        <span v-if="!item.is_purchasable" class="ml-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-700">
+                                            Manufacture — tidak bisa di-PO
+                                        </span>
+                                    </PartContextTrigger>
                                 </td>
                                 <td class="py-2 pr-3 text-right font-mono">{{ formatQty(item.quantity) }}</td>
                                 <td class="py-2 pr-3 text-center">{{ item.unit }}</td>
@@ -309,10 +312,12 @@ const convertToPo = () => {
                                 />
                                 <div class="min-w-0 flex-1">
                                     <div class="font-mono text-sm font-medium">
-                                        {{ item.part.part_number }} — {{ item.part.name }}
-                                        <span v-if="!item.is_purchasable" class="ml-1 text-xs font-sans font-normal text-rose-600">
-                                            (manufacture — tidak bisa di-PO)
-                                        </span>
+                                        <PartContextTrigger :part-id="item.part.id" :part-number="item.part.part_number">
+                                            {{ item.part.part_number }} — {{ item.part.name }}
+                                            <span v-if="!item.is_purchasable" class="ml-1 text-xs font-sans font-normal text-rose-600">
+                                                (manufacture — tidak bisa di-PO)
+                                            </span>
+                                        </PartContextTrigger>
                                     </div>
                                     <div class="text-xs text-muted-foreground">Qty: {{ formatQty(item.quantity) }} {{ item.unit }}</div>
                                     <div v-if="item.is_purchasable && convertForm.supplier_id" class="text-xs">
