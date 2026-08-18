@@ -120,6 +120,14 @@ const editOrder = (order: OrderItem) => {
     router.visit(`/sales/customer-orders/${order.id}/edit`);
 };
 
+const deleteOrder = (order: OrderItem) => {
+    if (!window.confirm(`Hapus CO ${order.co_number}?`)) {
+        return;
+    }
+
+    useForm({}).delete(`/sales/customer-orders/${order.id}`);
+};
+
 const confirmOrder = (order: OrderItem) => {
     if (!window.confirm(`Konfirmasi CO ${order.co_number}?`)) {
         return;
@@ -341,6 +349,13 @@ const orderTotalPrice = (order: OrderItem): number => {
                                             <DropdownMenuContent align="end" class="w-48">
                                                 <DropdownMenuItem v-if="order.status === 1" @select.prevent="editOrder(order)">
                                                     Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    v-if="order.status === 1"
+                                                    class="text-destructive focus:text-destructive"
+                                                    @select.prevent="deleteOrder(order)"
+                                                >
+                                                    Delete
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator v-if="order.status === 1" />
                                                 <DropdownMenuLabel>Status Actions</DropdownMenuLabel>

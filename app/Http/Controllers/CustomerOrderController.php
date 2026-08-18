@@ -15,6 +15,7 @@ use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Part;
+use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseVoucher;
 use App\Models\PurchaseVoucherItem;
 use App\Models\Stock;
@@ -418,6 +419,66 @@ class CustomerOrderController extends Controller
         return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil diperbarui.');
     }
 
+    public function destroy(CustomerOrder $customerOrder): RedirectResponse
+    {
+        if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
+            return to_route('sales.customer-orders.index')
+                ->with('error', 'Order hanya bisa dihapus selama status masih Registered.');
+        }
+
+        $blockedReason = $this->blockedByLinkedPurchaseVoucher($customerOrder);
+
+        if ($blockedReason !== null) {
+            return to_route('sales.customer-orders.index')->with('error', $blockedReason);
+        }
+
+        DB::transaction(function () use ($customerOrder): void {
+            PurchaseVoucher::query()
+                ->where('customer_order_id', $customerOrder->id)
+                ->get()
+                ->each(fn (PurchaseVoucher $voucher) => $voucher->delete());
+
+            $customerOrder->delete();
+        });
+
+        return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil dihapus beserta Purchase Voucher terkait.');
+    }
+
+    /**
+     * Null if every Purchase Voucher this CO auto-generated at confirm-time is
+     * still safely removable (Draft/Rejected/Cancelled, not yet converted into a
+     * real PO); otherwise an error message naming the voucher that has progressed
+     * too far to auto-delete - deleting the CO out from under an approved/converted
+     * voucher would leave a live purchasing commitment with no originating order.
+     */
+    private function blockedByLinkedPurchaseVoucher(CustomerOrder $customerOrder): ?string
+    {
+        $vouchers = PurchaseVoucher::query()
+            ->where('customer_order_id', $customerOrder->id)
+            ->with('items:id,purchase_voucher_id')
+            ->get(['id', 'pv_number', 'status']);
+
+        foreach ($vouchers as $voucher) {
+            $isSafeStatus = in_array($voucher->status, [
+                PurchaseVoucher::STATUS_DRAFT,
+                PurchaseVoucher::STATUS_REJECTED,
+                PurchaseVoucher::STATUS_CANCELLED,
+            ], true);
+
+            $hasLinkedPoItems = PurchaseOrderItem::query()
+                ->whereIn('purchase_voucher_item_id', $voucher->items->pluck('id'))
+                ->exists();
+
+            if (! $isSafeStatus || $hasLinkedPoItems) {
+                $statusLabel = PurchaseVoucher::statusLabels()[$voucher->status] ?? (string) $voucher->status;
+
+                return "Purchase Voucher {$voucher->pv_number} sudah berstatus {$statusLabel} dan tidak bisa ikut terhapus otomatis. Selesaikan atau batalkan voucher tersebut dulu.";
+            }
+        }
+
+        return null;
+    }
+
     public function confirm(CustomerOrder $customerOrder): RedirectResponse
     {
         if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
@@ -756,6 +817,12 @@ class CustomerOrderController extends Controller
             return to_route('sales.customer-orders.index')->with('error', 'Order masih di status Registered, tidak perlu undo.');
         }
 
+        $blockedReason = $this->blockedByLinkedPurchaseVoucher($customerOrder);
+
+        if ($blockedReason !== null) {
+            return to_route('sales.customer-orders.index')->with('error', $blockedReason);
+        }
+
         DB::transaction(function () use ($customerOrder): void {
             $invoiceIds = Invoice::query()
                 ->where('customer_order_id', $customerOrder->id)
@@ -771,12 +838,17 @@ class CustomerOrderController extends Controller
                     ->delete();
             }
 
+            PurchaseVoucher::query()
+                ->where('customer_order_id', $customerOrder->id)
+                ->get()
+                ->each(fn (PurchaseVoucher $voucher) => $voucher->delete());
+
             $customerOrder->update([
                 'status' => CustomerOrder::STATUS_REGISTERED,
             ]);
         });
 
-        return to_route('sales.customer-orders.index')->with('success', 'Status order berhasil di-undo ke Registered. Invoice terkait juga berhasil dihapus.');
+        return to_route('sales.customer-orders.index')->with('success', 'Status order berhasil di-undo ke Registered. Invoice dan Purchase Voucher terkait juga berhasil dihapus.');
     }
 
     public function deliveryOrder(CustomerOrder $customerOrder): \Symfony\Component\HttpFoundation\Response|RedirectResponse

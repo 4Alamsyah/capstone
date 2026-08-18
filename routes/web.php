@@ -117,6 +117,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/customer-orders', [CustomerOrderController::class, 'store'])->name('sales.customer-orders.store');
         Route::get('/customer-orders/{customerOrder}/edit', [CustomerOrderController::class, 'edit'])->name('sales.customer-orders.edit');
         Route::put('/customer-orders/{customerOrder}', [CustomerOrderController::class, 'update'])->name('sales.customer-orders.update');
+        Route::delete('/customer-orders/{customerOrder}', [CustomerOrderController::class, 'destroy'])->name('sales.customer-orders.destroy');
         Route::post('/customer-orders/{customerOrder}/confirm', [CustomerOrderController::class, 'confirm'])->name('sales.customer-orders.confirm');
         Route::patch('/customer-orders/{customerOrder}/status', [CustomerOrderController::class, 'updateStatus'])->name('sales.customer-orders.status');
         Route::post('/customer-orders/{customerOrder}/undo-report', [CustomerOrderController::class, 'undoReport'])->name('sales.customer-orders.undo-report');
