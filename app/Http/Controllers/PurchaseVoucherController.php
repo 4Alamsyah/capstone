@@ -7,6 +7,7 @@ use App\Http\Requests\PurchaseVoucher\StorePurchaseVoucherRequest;
 use App\Models\AppSetting;
 use App\Models\Currency;
 use App\Models\Part;
+use App\Models\PartSupplierPrice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseVoucher;
@@ -18,6 +19,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -70,6 +72,7 @@ class PurchaseVoucherController extends Controller
     public function create(): Response
     {
         $parts = Part::withSum('stocks as total_stock', 'quantity')
+            ->whereDoesntHave('boms', fn ($query) => $query->where('is_active', true))
             ->select('id', 'part_number', 'name', 'safety_stock')
             ->get();
 
@@ -95,6 +98,13 @@ class PurchaseVoucherController extends Controller
 
             foreach ($validated['lines'] as $line) {
                 $part = Part::findOrFail($line['part_id']);
+
+                if (! $part->isPurchasable()) {
+                    throw ValidationException::withMessages([
+                        'lines' => "Part {$part->part_number} - {$part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
+                    ]);
+                }
+
                 $totalStock = Stock::where('part_id', $part->id)->sum('quantity') ?? 0;
 
                 PurchaseVoucherItem::create([
@@ -113,10 +123,59 @@ class PurchaseVoucherController extends Controller
 
     public function show(PurchaseVoucher $purchaseVoucher): Response
     {
-        $purchaseVoucher->load(['items.part', 'customerOrder', 'creator']);
+        $purchaseVoucher->load([
+            'items.part.supplierPrices.supplier',
+            'items.part.boms' => fn ($query) => $query->where('is_active', true),
+            'customerOrder',
+            'creator',
+        ]);
 
         return Inertia::render('purchase/voucher/Show', [
-            'purchaseVoucher' => $purchaseVoucher,
+            'purchaseVoucher' => [
+                'id' => $purchaseVoucher->id,
+                'pv_number' => $purchaseVoucher->pv_number,
+                'status' => $purchaseVoucher->status,
+                'source' => $purchaseVoucher->source,
+                'customer_order' => $purchaseVoucher->customerOrder
+                    ? ['id' => $purchaseVoucher->customerOrder->id, 'co_number' => $purchaseVoucher->customerOrder->co_number]
+                    : null,
+                'created_at' => $purchaseVoucher->created_at,
+                'creator' => $purchaseVoucher->creator
+                    ? ['id' => $purchaseVoucher->creator->id, 'name' => $purchaseVoucher->creator->name]
+                    : null,
+                'submitted_at' => $purchaseVoucher->submitted_at,
+                'approved_at' => $purchaseVoucher->approved_at,
+                'approved_by' => $purchaseVoucher->approved_by,
+                'rejected_at' => $purchaseVoucher->rejected_at,
+                'rejected_by' => $purchaseVoucher->rejected_by,
+                'approval_notes' => $purchaseVoucher->approval_notes,
+                'required_date' => $purchaseVoucher->required_date?->format('Y-m-d'),
+                'notes' => $purchaseVoucher->notes,
+                // Each item carries whether its part is still purchase-type (no active BOM
+                // of its own) and any supplier prices already on file for it, so the
+                // Convert-to-PO screen can flag bad data and pre-fill/backfill pricing.
+                'items' => $purchaseVoucher->items->map(fn (PurchaseVoucherItem $item): array => [
+                    'id' => $item->id,
+                    'part_id' => $item->part_id,
+                    'part' => [
+                        'id' => $item->part->id,
+                        'part_number' => $item->part->part_number,
+                        'name' => $item->part->name,
+                    ],
+                    'quantity' => (float) $item->quantity,
+                    'unit' => $item->unit,
+                    'stock_on_hand' => (float) $item->stock_on_hand,
+                    'remarks' => $item->remarks,
+                    'is_purchasable' => $item->part->boms->isEmpty(),
+                    'supplier_prices' => $item->part->supplierPrices
+                        ->map(fn (PartSupplierPrice $price): array => [
+                            'supplier_id' => $price->supplier_id,
+                            'supplier_name' => $price->supplier?->name,
+                            'purchase_price' => (float) $price->purchase_price,
+                        ])
+                        ->values(),
+                ])->values(),
+            ],
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name']),
             'currencies' => Currency::where('is_active', true)->get(['code', 'name', 'symbol']),
             'defaultCurrency' => AppSetting::get('default_currency_code', 'IDR'),
@@ -211,13 +270,17 @@ class PurchaseVoucherController extends Controller
                 'created_by' => $request->user()->id,
             ]);
 
-            $allItemsConverted = true;
-
             foreach ($validated['lines'] as $line) {
-                $pvItem = PurchaseVoucherItem::findOrFail($line['purchase_voucher_item_id']);
+                $pvItem = PurchaseVoucherItem::with('part')->findOrFail($line['purchase_voucher_item_id']);
 
                 if ($pvItem->purchase_voucher_id !== $purchaseVoucher->id) {
                     throw new \InvalidArgumentException('PV item does not belong to this voucher.');
+                }
+
+                if (! $pvItem->part->isPurchasable()) {
+                    throw ValidationException::withMessages([
+                        'lines' => "Part {$pvItem->part->part_number} - {$pvItem->part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh dibuatkan PO.",
+                    ]);
                 }
 
                 $lineTotal = (float) $line['unit_price'] * (float) $pvItem->quantity;
@@ -231,6 +294,13 @@ class PurchaseVoucherController extends Controller
                     'line_total' => $lineTotal,
                     'purchase_voucher_item_id' => $pvItem->id,
                 ]);
+
+                // Backfill the part's price for this supplier if it isn't on file yet -
+                // never overwrite an existing price, only fill the gap.
+                PartSupplierPrice::firstOrCreate(
+                    ['part_id' => $pvItem->part_id, 'supplier_id' => $supplier->id],
+                    ['purchase_price' => $line['unit_price']],
+                );
             }
 
             $po->update([
@@ -254,6 +324,7 @@ class PurchaseVoucherController extends Controller
     public function stockRecommendations(): Response
     {
         $parts = Part::where('safety_stock', '>', 0)
+            ->whereDoesntHave('boms', fn ($query) => $query->where('is_active', true))
             ->withSum('stocks as total_stock', 'quantity')
             ->select('id', 'part_number', 'name', 'safety_stock')
             ->get()
@@ -298,6 +369,13 @@ class PurchaseVoucherController extends Controller
 
             foreach ($validated['lines'] as $line) {
                 $part = Part::findOrFail($line['part_id']);
+
+                if (! $part->isPurchasable()) {
+                    throw ValidationException::withMessages([
+                        'lines' => "Part {$part->part_number} - {$part->name} adalah part manufacture (punya BOM aktif) dan tidak boleh masuk Purchase Voucher.",
+                    ]);
+                }
+
                 $totalStock = Stock::where('part_id', $part->id)->sum('quantity') ?? 0;
 
                 PurchaseVoucherItem::create([

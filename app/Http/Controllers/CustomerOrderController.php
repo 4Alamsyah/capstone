@@ -7,6 +7,7 @@ use App\Http\Requests\CustomerOrder\UpdateCustomerOrderRequest;
 use App\Http\Requests\CustomerOrder\UpdateCustomerOrderStatusRequest;
 use App\Models\AppSetting;
 use App\Models\Bom;
+use App\Models\BomItem;
 use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\CustomerOrderItem;
@@ -16,11 +17,13 @@ use App\Models\InvoiceItem;
 use App\Models\Part;
 use App\Models\PurchaseVoucher;
 use App\Models\PurchaseVoucherItem;
+use App\Models\Stock;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -451,7 +454,9 @@ class CustomerOrderController extends Controller
                 ->with('error', 'CO tidak bisa di-confirm. Part berikut belum memiliki BOM aktif: '.$missingPartList);
         }
 
-        DB::transaction(function () use ($customerOrder, $activeBomsByPartId): void {
+        $pv = null;
+
+        DB::transaction(function () use ($customerOrder, $activeBomsByPartId, &$pv): void {
             $customerOrder->update([
                 'status' => CustomerOrder::STATUS_CONFIRMED,
             ]);
@@ -507,36 +512,86 @@ class CustomerOrderController extends Controller
                 ]);
             }
 
-            // Auto-create Purchase Voucher for items with insufficient stock
-            $insufficientItems = $customerOrder->items->filter(
-                fn (CustomerOrderItem $item): bool => (int) $item->stock_on_hand < (float) $item->quantity
-            );
+            // Auto-create a Purchase Voucher for the raw materials needed to produce the
+            // items that are short on stock. The main (finished) part is manufactured -
+            // it never belongs on a Purchase Voucher itself. Instead, explode each short
+            // part's BOM down to its purchase-type components (parts with no active BOM
+            // of their own); manufactured sub-assemblies are descended into rather than
+            // purchased directly, since making them is a Work Order's job, not a PV's.
+            $deficitByPart = [];
 
-            if ($insufficientItems->isNotEmpty()) {
-                $alreadyExists = PurchaseVoucher::query()
-                    ->where('customer_order_id', $customerOrder->id)
-                    ->exists();
+            foreach ($customerOrder->items as $item) {
+                $deficit = max(0.0, (float) $item->quantity - (int) $item->stock_on_hand);
 
-                if (!$alreadyExists) {
-                    $pv = PurchaseVoucher::query()->create([
-                        'pv_number' => PurchaseVoucher::generateNumber(),
-                        'status' => PurchaseVoucher::STATUS_DRAFT,
-                        'source' => PurchaseVoucher::SOURCE_CO_CONFIRMATION,
-                        'customer_order_id' => $customerOrder->id,
-                        'created_by' => request()->user()?->id,
-                        'notes' => 'Auto-generated from CO '.$customerOrder->co_number,
-                    ]);
+                if ($deficit <= 0.0 || (int) $item->part_id <= 0) {
+                    continue;
+                }
 
-                    foreach ($insufficientItems as $item) {
-                        $deficit = max(0, (float) $item->quantity - (int) $item->stock_on_hand);
-                        PurchaseVoucherItem::query()->create([
-                            'purchase_voucher_id' => $pv->id,
-                            'part_id' => $item->part_id,
-                            'quantity' => $deficit,
-                            'unit' => $item->unit,
-                            'stock_on_hand' => (int) $item->stock_on_hand,
-                            'remarks' => 'From CO item: '.($item->part?->part_number ?? ''),
+                $deficitByPart[$item->part_id] = ($deficitByPart[$item->part_id] ?? 0.0) + $deficit;
+            }
+
+            $materialRequirements = [];
+
+            foreach ($deficitByPart as $partId => $deficitQuantity) {
+                $bom = $activeBomsByPartId->get((int) $partId);
+
+                if (! $bom instanceof Bom) {
+                    continue;
+                }
+
+                $bom->loadMissing('items.componentPart.defaultUom', 'items.uom');
+
+                $this->collectPurchasableMaterialRequirements(
+                    $bom->items,
+                    $deficitQuantity,
+                    $materialRequirements,
+                    [(int) $partId],
+                );
+            }
+
+            if (! empty($materialRequirements)) {
+                $stockByPart = Stock::query()
+                    ->selectRaw('part_id, SUM(quantity) as total_stock')
+                    ->whereIn('part_id', array_keys($materialRequirements))
+                    ->groupBy('part_id')
+                    ->pluck('total_stock', 'part_id');
+
+                $purchaseLines = collect($materialRequirements)
+                    ->map(function (array $requirement) use ($stockByPart): array {
+                        $stockOnHand = (int) ($stockByPart[$requirement['part_id']] ?? 0);
+                        $requirement['stock_on_hand'] = $stockOnHand;
+                        $requirement['quantity'] = max(0.0, $requirement['quantity'] - $stockOnHand);
+
+                        return $requirement;
+                    })
+                    ->filter(fn (array $requirement): bool => $requirement['quantity'] > 0.0)
+                    ->values();
+
+                if ($purchaseLines->isNotEmpty()) {
+                    $alreadyExists = PurchaseVoucher::query()
+                        ->where('customer_order_id', $customerOrder->id)
+                        ->exists();
+
+                    if (! $alreadyExists) {
+                        $pv = PurchaseVoucher::query()->create([
+                            'pv_number' => PurchaseVoucher::generateNumber(),
+                            'status' => PurchaseVoucher::STATUS_DRAFT,
+                            'source' => PurchaseVoucher::SOURCE_CO_CONFIRMATION,
+                            'customer_order_id' => $customerOrder->id,
+                            'created_by' => request()->user()?->id,
+                            'notes' => 'Auto-generated from CO '.$customerOrder->co_number,
                         ]);
+
+                        foreach ($purchaseLines as $line) {
+                            PurchaseVoucherItem::query()->create([
+                                'purchase_voucher_id' => $pv->id,
+                                'part_id' => $line['part_id'],
+                                'quantity' => $line['quantity'],
+                                'unit' => $line['unit'],
+                                'stock_on_hand' => $line['stock_on_hand'],
+                                'remarks' => 'Material for CO '.$customerOrder->co_number,
+                            ]);
+                        }
                     }
                 }
             }
@@ -544,10 +599,67 @@ class CustomerOrderController extends Controller
 
         $message = 'Customer order berhasil di-confirm dan manufacture order otomatis dibuat.';
         if (isset($pv)) {
-            $message .= ' Purchase Voucher otomatis dibuat untuk item dengan stok kurang.';
+            $message .= ' Purchase Voucher otomatis dibuat untuk material yang kurang untuk produksi.';
         }
 
         return to_route('sales.customer-orders.index')->with('success', $message);
+    }
+
+    /**
+     * Recursively explode a BOM to accumulate quantities of purchase-type components
+     * (parts with no active BOM of their own) needed to produce $parentQuantity of the
+     * parent part. A component that itself has an active BOM is a manufactured
+     * sub-assembly, not a purchasable material - it is descended into instead of being
+     * added to $requirements, since a Purchase Voucher must never carry a part that is
+     * made rather than bought.
+     *
+     * @param  Collection<int, BomItem>  $bomItems
+     * @param  array<int, array{part_id: int, quantity: float, unit: string}>  $requirements
+     * @param  list<int>  $visited
+     */
+    private function collectPurchasableMaterialRequirements(
+        Collection $bomItems,
+        float $parentQuantity,
+        array &$requirements,
+        array $visited = [],
+    ): void {
+        foreach ($bomItems as $bomItem) {
+            if ($bomItem->line_type !== 'part' || ! $bomItem->componentPart) {
+                continue;
+            }
+
+            $part = $bomItem->componentPart;
+            $requiredQuantity = $parentQuantity * (float) $bomItem->quantity;
+
+            if ($requiredQuantity <= 0.0) {
+                continue;
+            }
+
+            $subBom = in_array($part->id, $visited, true) ? null : $part->activeBom();
+
+            if ($subBom instanceof Bom) {
+                $subBom->loadMissing('items.componentPart.defaultUom', 'items.uom');
+
+                $this->collectPurchasableMaterialRequirements(
+                    $subBom->items,
+                    $requiredQuantity,
+                    $requirements,
+                    [...$visited, $part->id],
+                );
+
+                continue;
+            }
+
+            if (! isset($requirements[$part->id])) {
+                $requirements[$part->id] = [
+                    'part_id' => $part->id,
+                    'quantity' => 0.0,
+                    'unit' => strtoupper((string) ($bomItem->uom?->code ?? $part->defaultUom?->code ?? 'PCS')),
+                ];
+            }
+
+            $requirements[$part->id]['quantity'] += $requiredQuantity;
+        }
     }
 
     public function updateStatus(UpdateCustomerOrderStatusRequest $request, CustomerOrder $customerOrder): RedirectResponse

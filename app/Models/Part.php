@@ -98,4 +98,14 @@ class Part extends Model
     {
         return $this->boms()->where('is_active', true)->latest()->first();
     }
+
+    /**
+     * Whether this part is bought rather than made. A part with an active BOM is
+     * manufactured via Work Order and must never be sourced through a Purchase
+     * Voucher / Purchase Order.
+     */
+    public function isPurchasable(): bool
+    {
+        return $this->activeBom() === null;
+    }
 }

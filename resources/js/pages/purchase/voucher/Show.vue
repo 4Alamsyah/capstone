@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router, useForm, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,18 @@ import { formatQty } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Part = { id: number; part_number: string; name: string };
-type PVItem = { id: number; part_id: number; part: Part; quantity: number; unit: string; stock_on_hand: number; remarks?: string };
+type SupplierPrice = { supplier_id: number; supplier_name: string; purchase_price: number };
+type PVItem = {
+    id: number;
+    part_id: number;
+    part: Part;
+    quantity: number;
+    unit: string;
+    stock_on_hand: number;
+    remarks?: string;
+    is_purchasable: boolean;
+    supplier_prices: SupplierPrice[];
+};
 type CO = { id: number; co_number: string };
 type UserRef = { id: number; name: string };
 type Supplier = { id: number; name: string };
@@ -69,6 +80,30 @@ const selectedItemsForConvert = ref<Record<number, boolean>>({});
 const unitPrices = ref<Record<number, number>>({});
 const poRemarks = ref<Record<number, string>>({});
 
+const findSupplierPrice = (item: PVItem, supplierId: number | string): SupplierPrice | undefined =>
+    item.supplier_prices.find((sp) => sp.supplier_id === Number(supplierId));
+
+const hasNonPurchasableItems = computed(() => props.purchaseVoucher.items.some((item) => !item.is_purchasable));
+
+// When the supplier changes, pre-fill known prices for that supplier so the user
+// only has to type a price for parts that genuinely don't have one on file yet.
+watch(
+    () => convertForm.supplier_id,
+    (supplierId) => {
+        if (!supplierId) {
+            return;
+        }
+
+        for (const item of props.purchaseVoucher.items) {
+            const match = findSupplierPrice(item, supplierId);
+
+            if (match) {
+                unitPrices.value[item.id] = match.purchase_price;
+            }
+        }
+    },
+);
+
 const statusColors: Record<number, string> = {
     1: 'bg-amber-100 text-amber-700',
     2: 'bg-blue-100 text-blue-700',
@@ -114,6 +149,18 @@ const prepareConvertForm = () => {
 const convertToPo = () => {
     if (!convertForm.supplier_id) {
         window.alert('Pilih supplier');
+        return;
+    }
+
+    const selectedItems = props.purchaseVoucher.items.filter((item) => selectedItemsForConvert.value[item.id]);
+
+    if (selectedItems.some((item) => !item.is_purchasable)) {
+        window.alert('Ada item yang merupakan part manufacture (punya BOM aktif) dan tidak boleh dibuatkan PO. Batalkan pilihannya terlebih dahulu.');
+        return;
+    }
+
+    if (selectedItems.some((item) => !unitPrices.value[item.id] || unitPrices.value[item.id] <= 0)) {
+        window.alert('Isi harga satuan untuk semua item yang dipilih.');
         return;
     }
 
@@ -177,6 +224,9 @@ const convertToPo = () => {
             <!-- Items Table -->
             <div class="rounded-lg border border-sidebar-border/70 p-4">
                 <div class="mb-3 text-sm font-semibold">Items ({{ purchaseVoucher.items.length }})</div>
+                <div v-if="hasNonPurchasableItems" class="mb-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    Voucher ini berisi part manufacture (punya BOM aktif). Part manufacture tidak boleh dibuatkan PO — hanya part purchase yang bisa diconvert.
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
@@ -196,6 +246,9 @@ const convertToPo = () => {
                             >
                                 <td class="py-2 pr-3 font-mono text-xs">
                                     {{ item.part.part_number }} — {{ item.part.name }}
+                                    <span v-if="!item.is_purchasable" class="ml-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-700">
+                                        Manufacture — tidak bisa di-PO
+                                    </span>
                                 </td>
                                 <td class="py-2 pr-3 text-right font-mono">{{ formatQty(item.quantity) }}</td>
                                 <td class="py-2 pr-3 text-center">{{ item.unit }}</td>
@@ -246,15 +299,30 @@ const convertToPo = () => {
                                 v-for="item in purchaseVoucher.items"
                                 :key="item.id"
                                 class="flex flex-wrap items-center gap-3 rounded-md border border-sidebar-border/40 p-3"
+                                :class="{ 'opacity-50': !item.is_purchasable }"
                             >
                                 <input
                                     v-model="selectedItemsForConvert[item.id]"
                                     type="checkbox"
                                     class="rounded border-input"
+                                    :disabled="!item.is_purchasable"
                                 />
                                 <div class="min-w-0 flex-1">
-                                    <div class="font-mono text-sm font-medium">{{ item.part.part_number }} — {{ item.part.name }}</div>
+                                    <div class="font-mono text-sm font-medium">
+                                        {{ item.part.part_number }} — {{ item.part.name }}
+                                        <span v-if="!item.is_purchasable" class="ml-1 text-xs font-sans font-normal text-rose-600">
+                                            (manufacture — tidak bisa di-PO)
+                                        </span>
+                                    </div>
                                     <div class="text-xs text-muted-foreground">Qty: {{ formatQty(item.quantity) }} {{ item.unit }}</div>
+                                    <div v-if="item.is_purchasable && convertForm.supplier_id" class="text-xs">
+                                        <span v-if="findSupplierPrice(item, convertForm.supplier_id)" class="text-muted-foreground">
+                                            Harga tercatat: {{ findSupplierPrice(item, convertForm.supplier_id)?.purchase_price.toLocaleString('id-ID') }}
+                                        </span>
+                                        <span v-else class="text-amber-600">
+                                            Belum ada harga untuk supplier ini — akan disimpan sebagai harga baru di part.
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <Input
@@ -264,14 +332,14 @@ const convertToPo = () => {
                                         min="0"
                                         placeholder="Harga satuan"
                                         class="w-36"
-                                        :disabled="!selectedItemsForConvert[item.id]"
+                                        :disabled="!selectedItemsForConvert[item.id] || !item.is_purchasable"
                                     />
                                     <Input
                                         v-model="poRemarks[item.id]"
                                         type="text"
                                         placeholder="Remarks"
                                         class="w-40"
-                                        :disabled="!selectedItemsForConvert[item.id]"
+                                        :disabled="!selectedItemsForConvert[item.id] || !item.is_purchasable"
                                     />
                                 </div>
                             </label>
