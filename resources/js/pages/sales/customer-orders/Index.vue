@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { MoreHorizontal } from 'lucide-vue-next';
+import { computed, reactive } from 'vue';
+import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-vue-next';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,8 +38,12 @@ type OrderItem = {
         part_number: string | null;
         part_name: string | null;
         quantity: string;
+        unit: string | null;
+        unit_price: string;
+        line_total: string;
         stock_on_hand: number;
         requires_mo: boolean;
+        remarks: string | null;
     }[];
 };
 
@@ -167,6 +171,24 @@ const paginationText = computed(() => {
 
     return `Showing ${props.pagination.from}-${props.pagination.to} of ${props.pagination.total} customer orders`;
 });
+
+const expandedOrderIds = reactive<Set<number>>(new Set());
+
+const toggleOrderItems = (order: OrderItem) => {
+    if (expandedOrderIds.has(order.id)) {
+        expandedOrderIds.delete(order.id);
+    } else {
+        expandedOrderIds.add(order.id);
+    }
+};
+
+const orderTotalQty = (order: OrderItem): number => {
+    return order.items.reduce((sum, item) => sum + Number(item.quantity), 0);
+};
+
+const orderTotalPrice = (order: OrderItem): number => {
+    return order.items.reduce((sum, item) => sum + Number(item.line_total), 0);
+};
 </script>
 
 <template>
@@ -261,6 +283,7 @@ const paginationText = computed(() => {
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
+                                <th class="py-2 pr-3 w-8"></th>
                                 <th class="py-2 pr-3">CO Number</th>
                                 <th class="py-2 pr-3">Customer</th>
                                 <th class="py-2 pr-3">Order Date</th>
@@ -273,62 +296,118 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="orders.length === 0">
-                                <td colspan="8" class="py-8 text-center text-muted-foreground">No customer orders found.</td>
+                                <td colspan="9" class="py-8 text-center text-muted-foreground">No customer orders found.</td>
                             </tr>
-                            <tr v-for="order in orders" :key="order.id" class="border-b border-sidebar-border/40 align-top last:border-0">
-                                <td class="py-2 pr-3 font-mono font-medium">{{ order.co_number }}</td>
-                                <td class="py-2 pr-3">{{ order.customer.name ?? '-' }}</td>
-                                <td class="py-2 pr-3">{{ order.order_date ?? '-' }}</td>
-                                <td class="py-2 pr-3">{{ order.delivery_date ?? '-' }}</td>
-                                <td class="py-2 pr-3">{{ Number(order.subtotal).toLocaleString() }} {{ order.currency_code }}</td>
-                                <td class="py-2 pr-3">
-                                    <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="statusColors[order.status]">
-                                        {{ statusLabels[String(order.status)] ?? order.status }}
-                                    </span>
-                                </td>
-                                <td class="py-2 pr-3">
-                                    <span
-                                        class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                        :class="order.needs_mo_suggestion ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
-                                    >
-                                        {{ order.needs_mo_suggestion ? 'Need MO' : 'Ready Stock' }}
-                                    </span>
-                                </td>
-                                <td class="py-2 text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger :as-child="true">
-                                            <Button size="icon" variant="ghost" class="h-8 w-8">
-                                                <MoreHorizontal class="size-4" />
-                                                <span class="sr-only">Open actions menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" class="w-48">
-                                            <DropdownMenuItem v-if="order.status === 1" @select.prevent="editOrder(order)">
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator v-if="order.status === 1" />
-                                            <DropdownMenuLabel>Status Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem v-if="order.status === 1" @select.prevent="confirmOrder(order)">
-                                                Confirm
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.status === 2 || order.status === 3" @select.prevent="moveStatus(order, 4)">
-                                                Delivered
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.status === 4" @select.prevent="moveStatus(order, 9)">
-                                                Historical
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem v-if="order.status !== 1" @select.prevent="undoReport(order)">
-                                                Undo Report
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator v-if="hasDocumentActions(order)" />
-                                            <DropdownMenuLabel v-if="hasDocumentActions(order)">Documents</DropdownMenuLabel>
-                                            <DropdownMenuItem v-if="order.status >= 4" @select.prevent="openDeliveryOrderPdf(order)">
-                                                Download DN PDF
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </td>
-                            </tr>
+                            <template v-for="order in orders" :key="order.id">
+                                <tr class="border-b border-sidebar-border/40 align-top last:border-0">
+                                    <td class="py-2 pr-3">
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-sidebar-accent/60"
+                                            :disabled="order.items.length === 0"
+                                            @click="toggleOrderItems(order)"
+                                        >
+                                            <ChevronDown v-if="expandedOrderIds.has(order.id)" class="size-4" />
+                                            <ChevronRight v-else class="size-4" :class="order.items.length === 0 ? 'opacity-30' : ''" />
+                                            <span class="sr-only">Toggle parts</span>
+                                        </button>
+                                    </td>
+                                    <td class="py-2 pr-3 font-mono font-medium">{{ order.co_number }}</td>
+                                    <td class="py-2 pr-3">{{ order.customer.name ?? '-' }}</td>
+                                    <td class="py-2 pr-3">{{ order.order_date ?? '-' }}</td>
+                                    <td class="py-2 pr-3">{{ order.delivery_date ?? '-' }}</td>
+                                    <td class="py-2 pr-3">{{ Number(order.subtotal).toLocaleString() }} {{ order.currency_code }}</td>
+                                    <td class="py-2 pr-3">
+                                        <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="statusColors[order.status]">
+                                            {{ statusLabels[String(order.status)] ?? order.status }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 pr-3">
+                                        <span
+                                            class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                            :class="order.needs_mo_suggestion ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
+                                        >
+                                            {{ order.needs_mo_suggestion ? 'Need MO' : 'Ready Stock' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger :as-child="true">
+                                                <Button size="icon" variant="ghost" class="h-8 w-8">
+                                                    <MoreHorizontal class="size-4" />
+                                                    <span class="sr-only">Open actions menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" class="w-48">
+                                                <DropdownMenuItem v-if="order.status === 1" @select.prevent="editOrder(order)">
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator v-if="order.status === 1" />
+                                                <DropdownMenuLabel>Status Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem v-if="order.status === 1" @select.prevent="confirmOrder(order)">
+                                                    Confirm
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem v-if="order.status === 2 || order.status === 3" @select.prevent="moveStatus(order, 4)">
+                                                    Delivered
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem v-if="order.status === 4" @select.prevent="moveStatus(order, 9)">
+                                                    Historical
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem v-if="order.status !== 1" @select.prevent="undoReport(order)">
+                                                    Undo Report
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator v-if="hasDocumentActions(order)" />
+                                                <DropdownMenuLabel v-if="hasDocumentActions(order)">Documents</DropdownMenuLabel>
+                                                <DropdownMenuItem v-if="order.status >= 4" @select.prevent="openDeliveryOrderPdf(order)">
+                                                    Download DN PDF
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </td>
+                                </tr>
+                                <tr v-if="expandedOrderIds.has(order.id)" class="border-b border-sidebar-border/40 bg-sidebar-accent/20">
+                                    <td colspan="9" class="px-3 py-3">
+                                        <div class="overflow-x-auto rounded-md border border-sidebar-border/60 bg-background">
+                                            <table class="w-full text-xs">
+                                                <thead class="bg-sidebar-accent/40 text-left text-muted-foreground">
+                                                    <tr>
+                                                        <th class="px-3 py-2">Part Number</th>
+                                                        <th class="px-3 py-2">Part Name</th>
+                                                        <th class="px-3 py-2 text-right">Qty</th>
+                                                        <th class="px-3 py-2">Unit</th>
+                                                        <th class="px-3 py-2 text-right">Unit Price</th>
+                                                        <th class="px-3 py-2 text-right">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="item in order.items" :key="item.id" class="border-t border-sidebar-border/50">
+                                                        <td class="px-3 py-2 font-mono">{{ item.part_number ?? '-' }}</td>
+                                                        <td class="px-3 py-2">{{ item.part_name ?? '-' }}</td>
+                                                        <td class="px-3 py-2 text-right">{{ Number(item.quantity).toLocaleString() }}</td>
+                                                        <td class="px-3 py-2">{{ item.unit ?? '-' }}</td>
+                                                        <td class="px-3 py-2 text-right">{{ Number(item.unit_price).toLocaleString() }}</td>
+                                                        <td class="px-3 py-2 text-right">{{ Number(item.line_total).toLocaleString() }}</td>
+                                                    </tr>
+                                                    <tr v-if="order.items.length === 0">
+                                                        <td colspan="6" class="px-3 py-3 text-center text-muted-foreground">No parts on this order.</td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot v-if="order.items.length > 0">
+                                                    <tr class="border-t border-sidebar-border/70 font-semibold">
+                                                        <td class="px-3 py-2" colspan="2">Total</td>
+                                                        <td class="px-3 py-2 text-right">{{ orderTotalQty(order).toLocaleString() }}</td>
+                                                        <td class="px-3 py-2"></td>
+                                                        <td class="px-3 py-2"></td>
+                                                        <td class="px-3 py-2 text-right">
+                                                            {{ orderTotalPrice(order).toLocaleString() }} {{ order.currency_code }}
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
                         </tbody>
                     </table>
                 </div>

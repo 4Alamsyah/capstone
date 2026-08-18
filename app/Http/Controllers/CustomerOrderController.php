@@ -119,6 +119,8 @@ class CustomerOrderController extends Controller
                     'part_name' => $item->part?->name,
                     'quantity' => (string) $item->quantity,
                     'unit' => $item->unit,
+                    'unit_price' => (string) $item->unit_price,
+                    'line_total' => (string) $item->line_total,
                     'stock_on_hand' => (int) $item->stock_on_hand,
                     'requires_mo' => $item->requires_mo,
                     'remarks' => $item->remarks,
