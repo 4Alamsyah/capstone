@@ -78,11 +78,28 @@ const approvalForm = useForm({
 });
 
 const selectedItemsForConvert = ref<Record<number, boolean>>({});
-const unitPrices = ref<Record<number, number>>({});
 const poRemarks = ref<Record<number, string>>({});
 
 const findSupplierPrice = (item: PVItem, supplierId: number | string): SupplierPrice | undefined =>
     item.supplier_prices.find((sp) => sp.supplier_id === Number(supplierId));
+
+const cheapestSupplierPrice = (item: PVItem): SupplierPrice | undefined =>
+    item.supplier_prices.reduce<SupplierPrice | undefined>(
+        (cheapest, sp) => (!cheapest || sp.purchase_price < cheapest.purchase_price ? sp : cheapest),
+        undefined,
+    );
+
+const formatCurrency = (value: number): string =>
+    `${props.defaultCurrency} ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value || 0)}`;
+
+// Seed every item's price from whatever's already on file for it (cheapest known
+// supplier price) so "Harga satuan" reflects the part's purchase price immediately,
+// before the user has even picked which supplier this PO is going to.
+const unitPrices = ref<Record<number, number>>(
+    Object.fromEntries(
+        props.purchaseVoucher.items.map((item) => [item.id, cheapestSupplierPrice(item)?.purchase_price ?? 0]),
+    ),
+);
 
 const hasNonPurchasableItems = computed(() => props.purchaseVoucher.items.some((item) => !item.is_purchasable));
 
@@ -236,6 +253,7 @@ const convertToPo = () => {
                                 <th class="py-2 pr-3 text-right">Quantity</th>
                                 <th class="py-2 pr-3 text-center">Unit</th>
                                 <th class="py-2 pr-3 text-right">Stock on Hand</th>
+                                <th class="py-2 pr-3">Purchase Price (dari Part)</th>
                                 <th class="py-2 pr-3">Remarks</th>
                             </tr>
                         </thead>
@@ -256,6 +274,14 @@ const convertToPo = () => {
                                 <td class="py-2 pr-3 text-right font-mono">{{ formatQty(item.quantity) }}</td>
                                 <td class="py-2 pr-3 text-center">{{ item.unit }}</td>
                                 <td class="py-2 pr-3 text-right font-mono text-muted-foreground">{{ item.stock_on_hand }}</td>
+                                <td class="py-2 pr-3">
+                                    <ul v-if="item.supplier_prices.length" class="space-y-0.5">
+                                        <li v-for="sp in item.supplier_prices" :key="sp.supplier_id" class="text-xs">
+                                            {{ sp.supplier_name || 'Unknown Supplier' }}: {{ formatCurrency(sp.purchase_price) }}
+                                        </li>
+                                    </ul>
+                                    <span v-else class="text-xs text-muted-foreground">Belum ada harga di part</span>
+                                </td>
                                 <td class="py-2 pr-3 text-muted-foreground">{{ item.remarks ?? '-' }}</td>
                             </tr>
                         </tbody>
@@ -320,12 +346,18 @@ const convertToPo = () => {
                                         </PartContextTrigger>
                                     </div>
                                     <div class="text-xs text-muted-foreground">Qty: {{ formatQty(item.quantity) }} {{ item.unit }}</div>
-                                    <div v-if="item.is_purchasable && convertForm.supplier_id" class="text-xs">
-                                        <span v-if="findSupplierPrice(item, convertForm.supplier_id)" class="text-muted-foreground">
-                                            Harga tercatat: {{ findSupplierPrice(item, convertForm.supplier_id)?.purchase_price.toLocaleString('id-ID') }}
-                                        </span>
-                                        <span v-else class="text-amber-600">
-                                            Belum ada harga untuk supplier ini — akan disimpan sebagai harga baru di part.
+                                    <div v-if="item.is_purchasable" class="text-xs">
+                                        <template v-if="convertForm.supplier_id">
+                                            <span v-if="findSupplierPrice(item, convertForm.supplier_id)" class="text-muted-foreground">
+                                                Harga tercatat: {{ formatCurrency(findSupplierPrice(item, convertForm.supplier_id)!.purchase_price) }}
+                                            </span>
+                                            <span v-else class="text-amber-600">
+                                                Belum ada harga untuk supplier ini — akan disimpan sebagai harga baru di part.
+                                            </span>
+                                        </template>
+                                        <span v-else-if="cheapestSupplierPrice(item)" class="text-muted-foreground">
+                                            Harga referensi termurah: {{ formatCurrency(cheapestSupplierPrice(item)!.purchase_price) }}
+                                            ({{ cheapestSupplierPrice(item)!.supplier_name }}) — pilih supplier untuk konfirmasi.
                                         </span>
                                     </div>
                                 </div>
