@@ -64,8 +64,46 @@ const breadcrumbItems: BreadcrumbItem[] = [
     { title: props.purchaseVoucher.pv_number, href: `/purchase/voucher/${props.purchaseVoucher.id}` },
 ];
 
+const findSupplierPrice = (item: PVItem, supplierId: number | string): SupplierPrice | undefined =>
+    item.supplier_prices.find((sp) => sp.supplier_id === Number(supplierId));
+
+const cheapestSupplierPrice = (item: PVItem): SupplierPrice | undefined =>
+    item.supplier_prices.reduce<SupplierPrice | undefined>(
+        (cheapest, sp) => (!cheapest || sp.purchase_price < cheapest.purchase_price ? sp : cheapest),
+        undefined,
+    );
+
+const formatCurrency = (value: number): string =>
+    `${props.defaultCurrency} ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value || 0)}`;
+
+// The supplier already on file for the most items in this voucher (ties broken by
+// lowest total cost) - the natural default for a PO built from these parts' own
+// purchase-price records, instead of making the user pick one from scratch.
+const defaultSupplierId = ((): number | null => {
+    const coverage = new Map<number, { itemCount: number; total: number }>();
+
+    for (const item of props.purchaseVoucher.items) {
+        for (const sp of item.supplier_prices) {
+            const entry = coverage.get(sp.supplier_id) ?? { itemCount: 0, total: 0 };
+            entry.itemCount += 1;
+            entry.total += sp.purchase_price;
+            coverage.set(sp.supplier_id, entry);
+        }
+    }
+
+    let best: { supplierId: number; itemCount: number; total: number } | null = null;
+
+    for (const [supplierId, { itemCount, total }] of coverage) {
+        if (!best || itemCount > best.itemCount || (itemCount === best.itemCount && total < best.total)) {
+            best = { supplierId, itemCount, total };
+        }
+    }
+
+    return best?.supplierId ?? null;
+})();
+
 const convertForm = useForm({
-    supplier_id: '',
+    supplier_id: defaultSupplierId ?? ('' as number | string),
     order_date: new Date().toISOString().split('T')[0],
     expected_date: '',
     currency_code: props.defaultCurrency,
@@ -80,24 +118,17 @@ const approvalForm = useForm({
 const selectedItemsForConvert = ref<Record<number, boolean>>({});
 const poRemarks = ref<Record<number, string>>({});
 
-const findSupplierPrice = (item: PVItem, supplierId: number | string): SupplierPrice | undefined =>
-    item.supplier_prices.find((sp) => sp.supplier_id === Number(supplierId));
-
-const cheapestSupplierPrice = (item: PVItem): SupplierPrice | undefined =>
-    item.supplier_prices.reduce<SupplierPrice | undefined>(
-        (cheapest, sp) => (!cheapest || sp.purchase_price < cheapest.purchase_price ? sp : cheapest),
-        undefined,
-    );
-
-const formatCurrency = (value: number): string =>
-    `${props.defaultCurrency} ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value || 0)}`;
-
-// Seed every item's price from whatever's already on file for it (cheapest known
-// supplier price) so "Harga satuan" reflects the part's purchase price immediately,
-// before the user has even picked which supplier this PO is going to.
+// Seed every item's price from the default supplier's price where it has one, else
+// that item's own cheapest known price, so "Harga satuan" reflects the part's
+// purchase price immediately - before the user touches the supplier field at all.
 const unitPrices = ref<Record<number, number>>(
     Object.fromEntries(
-        props.purchaseVoucher.items.map((item) => [item.id, cheapestSupplierPrice(item)?.purchase_price ?? 0]),
+        props.purchaseVoucher.items.map((item) => [
+            item.id,
+            (defaultSupplierId !== null ? findSupplierPrice(item, defaultSupplierId)?.purchase_price : undefined)
+                ?? cheapestSupplierPrice(item)?.purchase_price
+                ?? 0,
+        ]),
     ),
 );
 
