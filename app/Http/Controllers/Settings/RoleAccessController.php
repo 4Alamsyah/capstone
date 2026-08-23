@@ -18,18 +18,23 @@ class RoleAccessController extends Controller
      */
     public function edit(Request $request): Response
     {
-        $this->authorizeManagementAccess($request);
+        $this->authorizeManagementAccess($request, User::LEVEL_VIEW);
+
+        $authUser = $request->user();
 
         return Inertia::render('settings/RoleAccess', [
+            'canEdit' => $authUser instanceof User && $authUser->hasAccess(User::PERMISSION_MODULE_SETTINGS_ROLE_ACCESS, User::LEVEL_EDIT),
+            'canCreateUser' => $authUser instanceof User && $authUser->hasAccess(User::PERMISSION_MODULE_SETTINGS_ROLE_ACCESS, User::LEVEL_FULL),
             'users' => User::query()
                 ->orderBy('name')
-                ->get(['id', 'name', 'email', 'role', 'permissions'])
+                ->get(['id', 'name', 'email', 'role', 'permissions', 'is_active'])
                 ->map(fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
                     'permissions' => $user->resolvedPermissions(),
+                    'is_active' => (bool) $user->is_active,
                 ])
                 ->values(),
             'roles' => [
@@ -38,7 +43,9 @@ class RoleAccessController extends Controller
                 User::ROLE_GM,
                 User::ROLE_DIRECTOR,
             ],
-            'permissionLabels' => User::permissionLabels(),
+            'moduleGroups' => User::MODULES,
+            'permissionLevels' => User::permissionLevels(),
+            'approvePermissionLabels' => User::approvePermissionLabels(),
             'permissionTemplates' => [
                 User::ROLE_ADMIN => User::permissionsTemplateForRole(User::ROLE_ADMIN),
                 User::ROLE_STAFF => User::permissionsTemplateForRole(User::ROLE_STAFF),
@@ -54,17 +61,23 @@ class RoleAccessController extends Controller
      */
     public function update(Request $request, User $user): RedirectResponse
     {
-        $this->authorizeManagementAccess($request);
+        $this->authorizeManagementAccess($request, User::LEVEL_EDIT);
+
+        $validLevels = array_keys(User::permissionLevels());
 
         $validated = $request->validate([
             'role' => ['required', 'string', 'in:admin,staff,gm,director'],
             'permissions' => ['required', 'array'],
         ]);
 
-        $allowedKeys = array_keys(User::permissionLabels());
         $normalizedPermissions = User::permissionsTemplateForRole((string) $validated['role']);
 
-        foreach ($allowedKeys as $key) {
+        foreach (User::submodulePermissionKeys() as $key) {
+            $value = $validated['permissions'][$key] ?? null;
+            $normalizedPermissions[$key] = in_array($value, $validLevels, true) ? $value : $normalizedPermissions[$key];
+        }
+
+        foreach (User::approvePermissionKeys() as $key) {
             $normalizedPermissions[$key] = (bool) ($validated['permissions'][$key] ?? false);
         }
 
@@ -81,7 +94,7 @@ class RoleAccessController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $this->authorizeManagementAccess($request);
+        $this->authorizeManagementAccess($request, User::LEVEL_FULL);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -96,20 +109,42 @@ class RoleAccessController extends Controller
             'role' => $validated['role'],
             'permissions' => User::permissionsTemplateForRole((string) $validated['role']),
             'password' => Hash::make($validated['password']),
+            'is_active' => true,
         ]);
 
         return back()->with('status', 'user-created')->with('created_user_id', (string) $user->id);
     }
 
     /**
-     * Restrict access to management roles only.
+     * Toggle a user's active/non-active status.
      */
-    private function authorizeManagementAccess(Request $request): void
+    public function updateStatus(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeManagementAccess($request, User::LEVEL_EDIT);
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        if ($user->id === $request->user()?->id) {
+            return back()->with('error', 'Anda tidak dapat menonaktifkan akun Anda sendiri.');
+        }
+
+        $user->update(['is_active' => $validated['is_active']]);
+
+        return back()->with('status', 'user-status-updated');
+    }
+
+    /**
+     * Restrict access to management roles with at least $minLevel access to
+     * the Role Access sub-module itself.
+     */
+    private function authorizeManagementAccess(Request $request, string $minLevel): void
     {
         $authUser = $request->user();
 
-        if (! $authUser instanceof User || ! $authUser->isManagement() || ! $authUser->hasPermission(User::PERMISSION_MENU_ROLE_ACCESS)) {
-            throw new AuthorizationException('Hanya GM/Director yang dapat mengatur role dan akses pengguna.');
+        if (! $authUser instanceof User || ! $authUser->isManagement() || ! $authUser->hasAccess(User::PERMISSION_MODULE_SETTINGS_ROLE_ACCESS, $minLevel)) {
+            throw new AuthorizationException('Anda tidak memiliki akses yang cukup untuk halaman Role Access ini.');
         }
     }
 }

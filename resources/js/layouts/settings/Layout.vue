@@ -11,8 +11,10 @@ import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
+type PermissionValue = boolean | 'prohibited' | 'view' | 'edit' | 'full';
+
 type AuthUser = {
-    permissions?: Record<string, boolean>;
+    permissions?: Record<string, PermissionValue>;
 };
 
 type SharedPageProps = {
@@ -23,13 +25,15 @@ type SharedPageProps = {
 
 const page = usePage<SharedPageProps>();
 
-const hasRoleAccessPermission = computed(() => {
-    return Boolean(page.props.auth?.user?.permissions?.['menu.settings.role_access']);
-});
+const hasAccess = (key: string): boolean => {
+    const value = page.props.auth?.user?.permissions?.[key];
 
-const hasGeneralSettingPermission = computed(() => {
-    return Boolean(page.props.auth?.user?.permissions?.['menu.settings.general']);
-});
+    return typeof value === 'string' ? value !== 'prohibited' : Boolean(value);
+};
+
+const hasRoleAccessPermission = computed(() => hasAccess('module.settings.role_access'));
+
+const hasGeneralSettingPermission = computed(() => hasAccess('module.settings.general'));
 
 const sidebarNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -80,7 +84,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
         />
 
         <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
+            <aside class="w-full max-w-xls lg:w-48">
                 <nav
                     class="flex flex-col space-y-1 space-x-0"
                     aria-label="Settings"
@@ -106,7 +110,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
             <Separator class="my-6 lg:hidden" />
 
             <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+                <section class=" space-y-12">
                     <slot />
                 </section>
             </div>

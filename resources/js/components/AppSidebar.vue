@@ -28,8 +28,10 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
+type PermissionValue = boolean | 'prohibited' | 'view' | 'edit' | 'full';
+
 type AuthUser = {
-    permissions?: Record<string, boolean>;
+    permissions?: Record<string, PermissionValue>;
 };
 
 type SharedPageProps = {
@@ -41,8 +43,10 @@ type SharedPageProps = {
 const page = usePage<SharedPageProps>();
 const { t } = useI18n();
 
-const hasPermission = (key: string): boolean => {
-    return Boolean(page.props.auth?.user?.permissions?.[key]);
+const hasAccess = (key: string): boolean => {
+    const value = page.props.auth?.user?.permissions?.[key];
+
+    return typeof value === 'string' ? value !== 'prohibited' : Boolean(value);
 };
 
 /**
@@ -50,6 +54,113 @@ const hasPermission = (key: string): boolean => {
  * locales) rather than `title` (which changes when the language switches).
  */
 const dashboardHref = dashboard();
+
+/**
+ * Maps each leaf nav item's `href` to the sub-module permission key that
+ * gates it. Group nodes (items with children) are not listed here — their
+ * visibility is derived from whether any of their descendants remain
+ * visible after filtering.
+ */
+const HREF_PERMISSION_KEYS: Record<string, string> = {
+    '/dashboard': 'module.dashboard',
+
+    '/parts': 'module.parts.master',
+    '/parts/register': 'module.parts.master',
+    '/bom': 'module.parts.master',
+    '/parts/warehouses': 'module.parts.warehouse',
+    '/parts/stock': 'module.parts.stock',
+    '/parts/uoms': 'module.parts.uom',
+
+    '/work-orders': 'module.manufacturing.work_orders',
+    '/work-orders/report': 'module.manufacturing.work_orders',
+    '/work-orders/logs': 'module.manufacturing.work_orders',
+    '/work-orders/lead-time': 'module.manufacturing.work_orders',
+    '/work-centers': 'module.manufacturing.work_centers',
+
+    '/sales/customer-orders': 'module.sales.customer_orders',
+    '/sales/customer-orders/create': 'module.sales.customer_orders',
+    '/sales/quotations': 'module.sales.quotations',
+    '/sales/quotations/create': 'module.sales.quotations',
+    '/sales/invoices': 'module.sales.invoices',
+    '/sales/invoices/create': 'module.sales.invoices',
+    '/sales/customers': 'module.sales.customers',
+
+    '/purchase/po': 'module.purchase.orders',
+    '/purchase/po/create': 'module.purchase.orders',
+    '/purchase/po/arrivals': 'module.purchase.orders',
+    '/purchase/po/arrivals/logs': 'module.purchase.orders',
+    '/purchase/voucher': 'module.purchase.vouchers',
+    '/purchase/voucher/create': 'module.purchase.vouchers',
+    '/purchase/voucher/stock-recommendations': 'module.purchase.vouchers',
+    '/purchase/ap/invoices': 'module.purchase.ap_invoices',
+    '/suppliers': 'module.purchase.suppliers',
+
+    '/accounting/general': 'module.accounting.chart_of_accounts',
+    '/accounting/chart-of-accounts': 'module.accounting.chart_of_accounts',
+    '/accounting/fiscal-periods': 'module.accounting.fiscal_periods',
+    '/accounting/manual-journal': 'module.accounting.journal',
+    '/accounting/journal-entries': 'module.accounting.journal',
+    '/accounting/journal-report': 'module.accounting.journal',
+    '/accounting/journal-lines': 'module.accounting.journal',
+    '/accounting/profit-loss': 'module.accounting.journal',
+    '/accounting/tax-setting': 'module.accounting.tax_gl_settings',
+    '/accounting/gl-setting': 'module.accounting.tax_gl_settings',
+    '/accounting/exchange-rates': 'module.accounting.exchange_rates',
+    '/accounting/fx-revaluation': 'module.accounting.exchange_rates',
+    '/accounting/balance-sheet': 'module.accounting.reports',
+    '/accounting/ar-aging': 'module.accounting.reports',
+    '/accounting/ap-aging': 'module.accounting.reports',
+    '/accounting/audit-trails': 'module.accounting.reports',
+
+    '/settings/general': 'module.settings.general',
+    '/settings/general/payment-terms': 'module.settings.general',
+    '/settings/role-access': 'module.settings.role_access',
+};
+
+/**
+ * Nav item `href` values are either plain path strings or Wayfinder
+ * `{ url, method }` route definitions (e.g. `dashboard()`); normalize both
+ * to the path string used as the HREF_PERMISSION_KEYS lookup key.
+ */
+const resolveHrefPath = (href: NavItem['href']): string | undefined => {
+    if (typeof href === 'string') {
+        return href;
+    }
+
+    if (href && typeof href === 'object' && 'url' in href && typeof href.url === 'string') {
+        return href.url;
+    }
+
+    return undefined;
+};
+
+/**
+ * Recursively filters the nav tree: a leaf is kept if the user has access to
+ * its mapped permission key (or it has none), a group is kept if at least
+ * one of its descendants survives filtering.
+ */
+const filterNavByPermission = (items: NavItem[]): NavItem[] => {
+    return items.reduce<NavItem[]>((acc, item) => {
+        if (item.items && item.items.length > 0) {
+            const children = filterNavByPermission(item.items);
+
+            if (children.length > 0) {
+                acc.push({ ...item, items: children });
+            }
+
+            return acc;
+        }
+
+        const path = resolveHrefPath(item.href);
+        const key = path ? HREF_PERMISSION_KEYS[path] : undefined;
+
+        if (!key || hasAccess(key)) {
+            acc.push(item);
+        }
+
+        return acc;
+    }, []);
+};
 
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -360,35 +471,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         },
     ];
 
-    return items.filter((item) => {
-        if (item.href === dashboardHref) return hasPermission('menu.dashboard');
-        if (item.href === '/parts') return hasPermission('menu.parts');
-        if (item.href === '/work-orders')
-            return hasPermission('menu.work_orders');
-        if (item.href === '/sales/customer-orders') return hasPermission('menu.sales');
-        if (item.href === '/purchase/po') return hasPermission('menu.purchase');
-        if (item.href === '/accounting/general')
-            return hasPermission('menu.accounting');
-        if (item.href === '/settings') {
-            const childItems =
-                item.items?.filter((child) => {
-                    if (child.href === '/settings/general')
-                        return hasPermission('menu.settings.general');
-                    if (child.href === '/settings/general/payment-terms')
-                        return hasPermission('menu.settings.general');
-                    if (child.href === '/settings/role-access')
-                        return hasPermission('menu.settings.role_access');
-
-                    return true;
-                }) ?? [];
-
-            item.items = childItems;
-
-            return childItems.length > 0;
-        }
-
-        return true;
-    });
+    return filterNavByPermission(items);
 });
 
 const footerNavItems = computed<NavItem[]>(() => [

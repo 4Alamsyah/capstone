@@ -22,23 +22,68 @@ class User extends Authenticatable
 
     public const ROLE_DIRECTOR = 'director';
 
-    public const PERMISSION_MENU_DASHBOARD = 'menu.dashboard';
+    public const LEVEL_PROHIBITED = 'prohibited';
 
-    public const PERMISSION_MENU_PARTS = 'menu.parts';
+    public const LEVEL_VIEW = 'view';
 
-    public const PERMISSION_MENU_SUPPLIERS = 'menu.suppliers';
+    public const LEVEL_EDIT = 'edit';
 
-    public const PERMISSION_MENU_WORK_ORDERS = 'menu.work_orders';
+    public const LEVEL_FULL = 'full';
 
-    public const PERMISSION_MENU_SALES = 'menu.sales';
+    public const LEVEL_RANK = [
+        self::LEVEL_PROHIBITED => 0,
+        self::LEVEL_VIEW => 1,
+        self::LEVEL_EDIT => 2,
+        self::LEVEL_FULL => 3,
+    ];
 
-    public const PERMISSION_MENU_PURCHASE = 'menu.purchase';
+    public const PERMISSION_MODULE_DASHBOARD = 'module.dashboard';
 
-    public const PERMISSION_MENU_ACCOUNTING = 'menu.accounting';
+    public const PERMISSION_MODULE_PARTS_MASTER = 'module.parts.master';
 
-    public const PERMISSION_MENU_GENERAL_SETTINGS = 'menu.settings.general';
+    public const PERMISSION_MODULE_PARTS_WAREHOUSE = 'module.parts.warehouse';
 
-    public const PERMISSION_MENU_ROLE_ACCESS = 'menu.settings.role_access';
+    public const PERMISSION_MODULE_PARTS_STOCK = 'module.parts.stock';
+
+    public const PERMISSION_MODULE_PARTS_UOM = 'module.parts.uom';
+
+    public const PERMISSION_MODULE_MANUFACTURING_WORK_ORDERS = 'module.manufacturing.work_orders';
+
+    public const PERMISSION_MODULE_MANUFACTURING_WORK_CENTERS = 'module.manufacturing.work_centers';
+
+    public const PERMISSION_MODULE_SALES_CUSTOMERS = 'module.sales.customers';
+
+    public const PERMISSION_MODULE_SALES_CUSTOMER_ORDERS = 'module.sales.customer_orders';
+
+    public const PERMISSION_MODULE_SALES_QUOTATIONS = 'module.sales.quotations';
+
+    public const PERMISSION_MODULE_SALES_INVOICES = 'module.sales.invoices';
+
+    public const PERMISSION_MODULE_PURCHASE_SUPPLIERS = 'module.purchase.suppliers';
+
+    public const PERMISSION_MODULE_PURCHASE_ORDERS = 'module.purchase.orders';
+
+    public const PERMISSION_MODULE_PURCHASE_VOUCHERS = 'module.purchase.vouchers';
+
+    public const PERMISSION_MODULE_PURCHASE_AP_INVOICES = 'module.purchase.ap_invoices';
+
+    public const PERMISSION_MODULE_ACCOUNTING_CHART_OF_ACCOUNTS = 'module.accounting.chart_of_accounts';
+
+    public const PERMISSION_MODULE_ACCOUNTING_FISCAL_PERIODS = 'module.accounting.fiscal_periods';
+
+    public const PERMISSION_MODULE_ACCOUNTING_JOURNAL = 'module.accounting.journal';
+
+    public const PERMISSION_MODULE_ACCOUNTING_TAX_GL_SETTINGS = 'module.accounting.tax_gl_settings';
+
+    public const PERMISSION_MODULE_ACCOUNTING_EXCHANGE_RATES = 'module.accounting.exchange_rates';
+
+    public const PERMISSION_MODULE_ACCOUNTING_REPORTS = 'module.accounting.reports';
+
+    public const PERMISSION_MODULE_SETTINGS_GENERAL = 'module.settings.general';
+
+    public const PERMISSION_MODULE_SETTINGS_ROLE_ACCESS = 'module.settings.role_access';
+
+    public const PERMISSION_MODULE_SETTINGS_APP = 'module.settings.app';
 
     public const PERMISSION_APPROVE_PURCHASE_ORDER = 'approve.purchase_order';
 
@@ -47,6 +92,85 @@ class User extends Authenticatable
     public const PERMISSION_APPROVE_PURCHASE_VOUCHER = 'approve.purchase_voucher';
 
     public const PERMISSION_APPROVE_AP_INVOICE = 'approve.ap_invoice';
+
+    /**
+     * Module/sub-module tree used to build the role access permission matrix.
+     *
+     * @var array<string, array{label: string, submodules: array<string, string>}>
+     */
+    public const MODULES = [
+        'dashboard' => [
+            'label' => 'Dashboard',
+            'submodules' => [
+                self::PERMISSION_MODULE_DASHBOARD => 'Dashboard',
+            ],
+        ],
+        'parts' => [
+            'label' => 'Parts',
+            'submodules' => [
+                self::PERMISSION_MODULE_PARTS_MASTER => 'Part Master (Part & BOM)',
+                self::PERMISSION_MODULE_PARTS_WAREHOUSE => 'Warehouse',
+                self::PERMISSION_MODULE_PARTS_STOCK => 'Stock & Tool Loan',
+                self::PERMISSION_MODULE_PARTS_UOM => 'UOM',
+            ],
+        ],
+        'manufacturing' => [
+            'label' => 'Manufacturing',
+            'submodules' => [
+                self::PERMISSION_MODULE_MANUFACTURING_WORK_ORDERS => 'Work Order',
+                self::PERMISSION_MODULE_MANUFACTURING_WORK_CENTERS => 'Work Center',
+            ],
+        ],
+        'sales' => [
+            'label' => 'Sales',
+            'submodules' => [
+                self::PERMISSION_MODULE_SALES_CUSTOMERS => 'Customer',
+                self::PERMISSION_MODULE_SALES_CUSTOMER_ORDERS => 'Customer Order',
+                self::PERMISSION_MODULE_SALES_QUOTATIONS => 'Quotation',
+                self::PERMISSION_MODULE_SALES_INVOICES => 'Invoice',
+            ],
+        ],
+        'purchase' => [
+            'label' => 'Purchase',
+            'submodules' => [
+                self::PERMISSION_MODULE_PURCHASE_SUPPLIERS => 'Supplier',
+                self::PERMISSION_MODULE_PURCHASE_ORDERS => 'Purchase Order',
+                self::PERMISSION_MODULE_PURCHASE_VOUCHERS => 'Purchase Voucher',
+                self::PERMISSION_MODULE_PURCHASE_AP_INVOICES => 'AP Invoice',
+            ],
+        ],
+        'accounting' => [
+            'label' => 'Accounting',
+            'submodules' => [
+                self::PERMISSION_MODULE_ACCOUNTING_CHART_OF_ACCOUNTS => 'Chart of Accounts',
+                self::PERMISSION_MODULE_ACCOUNTING_FISCAL_PERIODS => 'Fiscal Period',
+                self::PERMISSION_MODULE_ACCOUNTING_JOURNAL => 'Journal',
+                self::PERMISSION_MODULE_ACCOUNTING_TAX_GL_SETTINGS => 'Tax & GL Setting',
+                self::PERMISSION_MODULE_ACCOUNTING_EXCHANGE_RATES => 'Exchange Rate & FX Revaluation',
+                self::PERMISSION_MODULE_ACCOUNTING_REPORTS => 'Reports',
+            ],
+        ],
+        'settings' => [
+            'label' => 'Settings',
+            'submodules' => [
+                self::PERMISSION_MODULE_SETTINGS_GENERAL => 'General Setting',
+                self::PERMISSION_MODULE_SETTINGS_ROLE_ACCESS => 'Role Access',
+                self::PERMISSION_MODULE_SETTINGS_APP => 'App Setting',
+            ],
+        ],
+    ];
+
+    /**
+     * The model's default attribute values.
+     *
+     * Ensures a freshly-instantiated user is active even before an explicit
+     * value is set or the DB column default is round-tripped back.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -58,6 +182,7 @@ class User extends Authenticatable
         'email',
         'role',
         'permissions',
+        'is_active',
         'password',
     ];
 
@@ -85,6 +210,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'permissions' => 'array',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -97,70 +223,44 @@ class User extends Authenticatable
     }
 
     /**
-     * Default permission matrix used as fallback.
+     * Flat list of all sub-module permission keys (in module/MODULES order).
      *
-     * @return array<string, bool>
+     * @return list<string>
      */
-    public static function defaultPermissions(): array
+    public static function submodulePermissionKeys(): array
+    {
+        $keys = [];
+
+        foreach (self::MODULES as $module) {
+            $keys = [...$keys, ...array_keys($module['submodules'])];
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Flat list of the boolean approval permission keys.
+     *
+     * @return list<string>
+     */
+    public static function approvePermissionKeys(): array
     {
         return [
-            self::PERMISSION_MENU_DASHBOARD => true,
-            self::PERMISSION_MENU_PARTS => true,
-            self::PERMISSION_MENU_SUPPLIERS => true,
-            self::PERMISSION_MENU_WORK_ORDERS => true,
-            self::PERMISSION_MENU_SALES => true,
-            self::PERMISSION_MENU_PURCHASE => true,
-            self::PERMISSION_MENU_ACCOUNTING => true,
-            self::PERMISSION_MENU_GENERAL_SETTINGS => true,
-            self::PERMISSION_MENU_ROLE_ACCESS => false,
-            self::PERMISSION_APPROVE_PURCHASE_ORDER => false,
-            self::PERMISSION_APPROVE_INVOICE_PAYMENT => false,
-            self::PERMISSION_APPROVE_PURCHASE_VOUCHER => false,
-            self::PERMISSION_APPROVE_AP_INVOICE => false,
+            self::PERMISSION_APPROVE_PURCHASE_ORDER,
+            self::PERMISSION_APPROVE_INVOICE_PAYMENT,
+            self::PERMISSION_APPROVE_PURCHASE_VOUCHER,
+            self::PERMISSION_APPROVE_AP_INVOICE,
         ];
     }
 
     /**
-     * Default permission template by role.
-     *
-     * @return array<string, bool>
-     */
-    public static function permissionsTemplateForRole(string $role): array
-    {
-        if ($role === self::ROLE_ADMIN) {
-            return array_fill_keys(array_keys(self::defaultPermissions()), true);
-        }
-
-        $template = self::defaultPermissions();
-
-        if (in_array($role, [self::ROLE_GM, self::ROLE_DIRECTOR], true)) {
-            $template[self::PERMISSION_MENU_ROLE_ACCESS] = true;
-            $template[self::PERMISSION_APPROVE_PURCHASE_ORDER] = true;
-            $template[self::PERMISSION_APPROVE_INVOICE_PAYMENT] = true;
-            $template[self::PERMISSION_APPROVE_PURCHASE_VOUCHER] = true;
-            $template[self::PERMISSION_APPROVE_AP_INVOICE] = true;
-        }
-
-        return $template;
-    }
-
-    /**
-     * Human-friendly labels for permission setting page.
+     * Human-friendly labels for the approval permission checkboxes.
      *
      * @return array<string, string>
      */
-    public static function permissionLabels(): array
+    public static function approvePermissionLabels(): array
     {
         return [
-            self::PERMISSION_MENU_DASHBOARD => 'View Dashboard menu',
-            self::PERMISSION_MENU_PARTS => 'View Part menu',
-            self::PERMISSION_MENU_SUPPLIERS => 'View Supplier menu',
-            self::PERMISSION_MENU_WORK_ORDERS => 'View Manufacture Order menu',
-            self::PERMISSION_MENU_SALES => 'View Sales menu',
-            self::PERMISSION_MENU_PURCHASE => 'View Purchase menu',
-            self::PERMISSION_MENU_ACCOUNTING => 'View Accounting menu',
-            self::PERMISSION_MENU_GENERAL_SETTINGS => 'View General Setting menu',
-            self::PERMISSION_MENU_ROLE_ACCESS => 'View Role Access setting menu',
             self::PERMISSION_APPROVE_PURCHASE_ORDER => 'Can approve/reject Purchase Order',
             self::PERMISSION_APPROVE_INVOICE_PAYMENT => 'Can approve/reject invoice payment',
             self::PERMISSION_APPROVE_PURCHASE_VOUCHER => 'Can approve/reject Purchase Voucher',
@@ -169,29 +269,120 @@ class User extends Authenticatable
     }
 
     /**
-     * Merge user-defined permissions with defaults.
+     * Human-friendly labels for the 4 access levels, in ranked order.
      *
-     * @return array<string, bool>
+     * @return array<string, string>
      */
-    public function resolvedPermissions(): array
+    public static function permissionLevels(): array
     {
-        if ($this->role === self::ROLE_ADMIN) {
-            return array_fill_keys(array_keys(self::defaultPermissions()), true);
-        }
-
-        $defaults = self::permissionsTemplateForRole((string) $this->role);
-
-        $raw = is_array($this->permissions) ? $this->permissions : [];
-
-        foreach ($defaults as $key => $defaultValue) {
-            $defaults[$key] = (bool) ($raw[$key] ?? $defaultValue);
-        }
-
-        return $defaults;
+        return [
+            self::LEVEL_PROHIBITED => 'Prohibited',
+            self::LEVEL_VIEW => 'Read Only',
+            self::LEVEL_EDIT => 'Read & Edit',
+            self::LEVEL_FULL => 'Read, Edit, Delete & Create',
+        ];
     }
 
     /**
-     * Check whether user has specific permission key.
+     * Default sub-module access level for a given role.
+     */
+    private static function defaultLevelForRole(string $role, string $key): string
+    {
+        if ($role === self::ROLE_ADMIN || in_array($role, [self::ROLE_GM, self::ROLE_DIRECTOR], true)) {
+            return self::LEVEL_FULL;
+        }
+
+        // Staff defaults: full operational access, read-only accounting, no settings access.
+        if ($key === self::PERMISSION_MODULE_DASHBOARD) {
+            return self::LEVEL_VIEW;
+        }
+
+        if (str_starts_with($key, 'module.settings.')) {
+            return $key === self::PERMISSION_MODULE_SETTINGS_GENERAL ? self::LEVEL_VIEW : self::LEVEL_PROHIBITED;
+        }
+
+        if (str_starts_with($key, 'module.accounting.')) {
+            return self::LEVEL_VIEW;
+        }
+
+        return self::LEVEL_FULL;
+    }
+
+    /**
+     * Default permission template (sub-module levels + approval flags) for a role.
+     *
+     * @return array<string, string|bool>
+     */
+    public static function permissionsTemplateForRole(string $role): array
+    {
+        $template = [];
+
+        foreach (self::submodulePermissionKeys() as $key) {
+            $template[$key] = self::defaultLevelForRole($role, $key);
+        }
+
+        $canApproveByDefault = $role === self::ROLE_ADMIN || in_array($role, [self::ROLE_GM, self::ROLE_DIRECTOR], true);
+
+        foreach (self::approvePermissionKeys() as $key) {
+            $template[$key] = $canApproveByDefault;
+        }
+
+        return $template;
+    }
+
+    /**
+     * Merge user-defined permissions with role defaults, validating stored values.
+     *
+     * @return array<string, string|bool>
+     */
+    public function resolvedPermissions(): array
+    {
+        $template = self::permissionsTemplateForRole((string) $this->role);
+
+        if ($this->role === self::ROLE_ADMIN) {
+            return $template;
+        }
+
+        $raw = is_array($this->permissions) ? $this->permissions : [];
+        $resolved = $template;
+
+        foreach (self::submodulePermissionKeys() as $key) {
+            $value = $raw[$key] ?? null;
+            $resolved[$key] = is_string($value) && array_key_exists($value, self::LEVEL_RANK)
+                ? $value
+                : $template[$key];
+        }
+
+        foreach (self::approvePermissionKeys() as $key) {
+            $resolved[$key] = array_key_exists($key, $raw) ? (bool) $raw[$key] : $template[$key];
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Resolved access level for a sub-module permission key.
+     */
+    public function permissionLevel(string $key): string
+    {
+        $value = $this->resolvedPermissions()[$key] ?? self::LEVEL_PROHIBITED;
+
+        return is_string($value) ? $value : self::LEVEL_PROHIBITED;
+    }
+
+    /**
+     * Check whether user's access level for a sub-module meets the minimum required level.
+     */
+    public function hasAccess(string $key, string $minLevel = self::LEVEL_VIEW): bool
+    {
+        $rank = self::LEVEL_RANK[$this->permissionLevel($key)] ?? 0;
+        $minRank = self::LEVEL_RANK[$minLevel] ?? 0;
+
+        return $rank >= $minRank;
+    }
+
+    /**
+     * Check whether user has specific boolean permission key (e.g. approval flags).
      */
     public function hasPermission(string $key): bool
     {

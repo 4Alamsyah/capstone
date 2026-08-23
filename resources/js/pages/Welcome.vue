@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { dashboard, login, register } from '@/routes';
-
-withDefaults(
-    defineProps<{
-        canRegister: boolean;
-    }>(),
-    {
-        canRegister: true,
-    },
-);
+import { dashboard, login } from '@/routes';
 </script>
 
 <template>
@@ -54,13 +45,6 @@ withDefaults(
                         >
                             Log in
                         </Link>
-                        <Link
-                            v-if="canRegister"
-                            :href="register()"
-                            class="rounded-full bg-cyan-400 px-5 py-2 font-semibold text-slate-950 transition hover:bg-cyan-300"
-                        >
-                            Register
-                        </Link>
                     </template>
                 </nav>
             </header>
@@ -94,13 +78,6 @@ withDefaults(
                                 class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-100"
                             >
                                 Masuk ke Sistem
-                            </Link>
-                            <Link
-                                v-if="canRegister"
-                                :href="register()"
-                                class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 py-3 font-semibold text-white transition hover:border-cyan-300/40 hover:bg-cyan-300/10"
-                            >
-                                Daftar Akun
                             </Link>
                         </template>
                     </div>

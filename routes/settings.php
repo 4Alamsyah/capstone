@@ -25,23 +25,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
 
-    Route::middleware('permission:menu.settings.general')->group(function (): void {
+    Route::middleware('permission:module.settings.general')->group(function (): void {
         Route::get('settings/general', [GeneralSettingController::class, 'edit'])->name('general-settings.edit');
-        Route::patch('settings/general', [GeneralSettingController::class, 'update'])->name('general-settings.update');
-        Route::post('settings/general/currencies', [GeneralSettingController::class, 'storeCurrency'])->name('general-settings.currencies.store');
-        Route::patch('settings/general/currencies/{currency}/default', [GeneralSettingController::class, 'setDefaultCurrency'])->name('general-settings.currencies.default');
+        Route::patch('settings/general', [GeneralSettingController::class, 'update'])->middleware('permission:module.settings.general,edit')->name('general-settings.update');
+        Route::post('settings/general/currencies', [GeneralSettingController::class, 'storeCurrency'])->middleware('permission:module.settings.general,full')->name('general-settings.currencies.store');
+        Route::patch('settings/general/currencies/{currency}/default', [GeneralSettingController::class, 'setDefaultCurrency'])->middleware('permission:module.settings.general,edit')->name('general-settings.currencies.default');
         Route::get('settings/general/payment-terms', [GeneralSettingController::class, 'paymentTerms'])->name('general-settings.payment-terms.edit');
-        Route::post('settings/general/payment-terms', [GeneralSettingController::class, 'storePaymentTerm'])->name('general-settings.payment-terms.store');
-        Route::patch('settings/general/payment-terms/{index}', [GeneralSettingController::class, 'updatePaymentTerm'])->name('general-settings.payment-terms.update');
-        Route::delete('settings/general/payment-terms/{index}', [GeneralSettingController::class, 'destroyPaymentTerm'])->name('general-settings.payment-terms.destroy');
+        Route::post('settings/general/payment-terms', [GeneralSettingController::class, 'storePaymentTerm'])->middleware('permission:module.settings.general,full')->name('general-settings.payment-terms.store');
+        Route::patch('settings/general/payment-terms/{index}', [GeneralSettingController::class, 'updatePaymentTerm'])->middleware('permission:module.settings.general,edit')->name('general-settings.payment-terms.update');
+        Route::delete('settings/general/payment-terms/{index}', [GeneralSettingController::class, 'destroyPaymentTerm'])->middleware('permission:module.settings.general,full')->name('general-settings.payment-terms.destroy');
     });
 
-    Route::middleware('permission:menu.settings.role_access')->group(function (): void {
+    Route::middleware('permission:module.settings.role_access')->group(function (): void {
         Route::get('settings/role-access', [RoleAccessController::class, 'edit'])->name('role-access.edit');
-        Route::post('settings/role-access', [RoleAccessController::class, 'store'])->name('role-access.store');
-        Route::patch('settings/role-access/{user}', [RoleAccessController::class, 'update'])->name('role-access.update');
+        Route::post('settings/role-access', [RoleAccessController::class, 'store'])->middleware('permission:module.settings.role_access,full')->name('role-access.store');
+        Route::patch('settings/role-access/{user}', [RoleAccessController::class, 'update'])->middleware('permission:module.settings.role_access,edit')->name('role-access.update');
+        Route::patch('settings/role-access/{user}/status', [RoleAccessController::class, 'updateStatus'])->middleware('permission:module.settings.role_access,edit')->name('role-access.update-status');
     });
 
-    Route::get('settings/app', [AppSettingController::class, 'edit'])->name('app-settings.edit');
-    Route::patch('settings/app', [AppSettingController::class, 'update'])->name('app-settings.update');
+    Route::middleware('permission:module.settings.app')->group(function (): void {
+        Route::get('settings/app', [AppSettingController::class, 'edit'])->name('app-settings.edit');
+        Route::patch('settings/app', [AppSettingController::class, 'update'])->middleware('permission:module.settings.app,edit')->name('app-settings.update');
+    });
 });
