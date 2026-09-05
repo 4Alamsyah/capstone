@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Customer;
+use App\Models\CustomerOrder;
 use App\Models\Part;
 use App\Models\PartSupplierPrice;
 use App\Models\PurchaseOrder;
@@ -163,6 +165,52 @@ test('auto-generated PO converts the voucher when every item is short', function
         'id' => $pv->id,
         'status' => PurchaseVoucher::STATUS_CONVERTED,
     ]);
+});
+
+test('auto-generated PO copies quotation number, payment terms, and delivery date from the linked customer order', function () {
+    /** @var User $user */
+    $user = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+    $supplier = Supplier::query()->create(['name' => 'Supplier CO Linked']);
+    $shortPart = createPurchasablePart('SH-005', 'CO Linked Part', stockQuantity: 0, supplier: $supplier, price: 750);
+
+    $customer = Customer::query()->create(['name' => 'Customer CO Linked']);
+
+    $co = CustomerOrder::query()->create([
+        'co_number' => 'CO-AUTO-00001',
+        'quotation_number' => 'QUO-AUTO-00001',
+        'customer_id' => $customer->id,
+        'status' => CustomerOrder::STATUS_CONFIRMED,
+        'order_date' => now()->toDateString(),
+        'delivery_date' => now()->addDays(14)->toDateString(),
+        'payment_terms' => 'Net 30',
+    ]);
+
+    $pv = PurchaseVoucher::query()->create([
+        'pv_number' => 'PV-AUTO-00005',
+        'status' => PurchaseVoucher::STATUS_DRAFT,
+        'source' => PurchaseVoucher::SOURCE_CO_CONFIRMATION,
+        'customer_order_id' => $co->id,
+    ]);
+
+    PurchaseVoucherItem::query()->create([
+        'purchase_voucher_id' => $pv->id,
+        'part_id' => $shortPart->id,
+        'quantity' => 6,
+        'unit' => 'PCS',
+        'stock_on_hand' => 0,
+    ]);
+
+    $this->actingAs($user)->post(route('purchase.voucher.submit', $pv), [
+        'generate_po' => true,
+    ]);
+
+    $po = PurchaseOrder::query()->where('supplier_id', $supplier->id)->first();
+
+    expect($po)->not->toBeNull();
+    expect($po->quo_no)->toBe('QUO-AUTO-00001');
+    expect($po->term_payment)->toBe('Net 30');
+    expect($po->expected_date->toDateString())->toBe($co->delivery_date->toDateString());
 });
 
 test('no PO is generated when the short part has no supplier price on file', function () {

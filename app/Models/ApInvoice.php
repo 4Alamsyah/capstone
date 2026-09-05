@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WoNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -90,12 +91,14 @@ class ApInvoice extends Model
     {
         $prefix = AppSetting::get('ap_invoice_prefix', 'APINV');
         $yearMonth = now()->format('Ym');
+        $stem = "{$prefix}-{$yearMonth}";
 
-        $pattern = "{$prefix}-{$yearMonth}-%";
-        $count = static::where('ap_invoice_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
+        $pattern = "{$stem}-%";
+        $existing = static::where('ap_invoice_number', 'like', $pattern)->pluck('ap_invoice_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, '-', $existing);
+        $seq = str_pad((string) $sequence, 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return "{$stem}-{$seq}";
     }
 
     /**

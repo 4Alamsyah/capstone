@@ -58,4 +58,5 @@ test('quotation can be generated into customer order from quotation list action'
     expect($quotation->co_number)->not->toBe('QT-202604-00001');
     expect($quotation->co_number)->toStartWith('CO-');
     expect((string) $quotation->notes)->toContain('Generated from quotation QT-202604-00001');
+    expect($quotation->project_code)->not->toBeNull();
 });

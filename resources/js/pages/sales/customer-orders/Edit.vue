@@ -78,7 +78,6 @@ const form = useForm({
     delivery_date: props.order.delivery_date ?? '',
     shipping_address: props.order.shipping_address ?? '',
     payment_terms: props.order.payment_terms ?? '',
-    project_code: props.order.project_code ?? '',
     delivery_type: (props.order.delivery_type ?? 'equipment') as 'equipment' | 'material',
     po_number: props.order.po_number ?? '',
     currency_code: props.order.currency_code ?? '',
@@ -219,9 +218,15 @@ const submit = () => {
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
-                <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">CO Number</span>
-                    <span class="font-mono text-sm font-semibold">{{ order.co_number }}</span>
+                <div class="mb-5 flex flex-wrap items-center gap-6 rounded-md bg-muted/40 px-3 py-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">CO Number</span>
+                        <span class="font-mono text-sm font-semibold">{{ order.co_number }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">Project Code</span>
+                        <span class="font-mono text-sm font-semibold">{{ order.project_code ?? '-' }}</span>
+                    </div>
                 </div>
 
                 <form class="space-y-5" @submit.prevent="submit">
@@ -273,12 +278,6 @@ const submit = () => {
                             <Label for="po_number">PO Number</Label>
                             <Input id="po_number" v-model="form.po_number" maxlength="100" />
                             <InputError :message="form.errors.po_number" />
-                        </div>
-
-                        <div class="grid gap-2">
-                            <Label for="project_code">Project Code</Label>
-                            <Input id="project_code" v-model="form.project_code" maxlength="100" />
-                            <InputError :message="form.errors.project_code" />
                         </div>
 
                         <div class="grid gap-2 md:col-span-2">

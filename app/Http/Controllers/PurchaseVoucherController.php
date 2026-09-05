@@ -17,6 +17,7 @@ use App\Models\PurchaseVoucherItem;
 use App\Models\Stock;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Support\NotificationDispatcher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class PurchaseVoucherController extends Controller
             'purchaseVouchers' => $vouchers->map(fn (PurchaseVoucher $pv) => [
                 'id' => $pv->id,
                 'pv_number' => $pv->pv_number,
+                'project_code' => $pv->project_code,
                 'status' => $pv->status,
                 'source' => $pv->source,
                 'customer_order' => $pv->customerOrder ? ['co_number' => $pv->customerOrder->co_number] : null,
@@ -138,6 +140,7 @@ class PurchaseVoucherController extends Controller
             'purchaseVoucher' => [
                 'id' => $purchaseVoucher->id,
                 'pv_number' => $purchaseVoucher->pv_number,
+                'project_code' => $purchaseVoucher->project_code,
                 'status' => $purchaseVoucher->status,
                 'source' => $purchaseVoucher->source,
                 'customer_order' => $purchaseVoucher->customerOrder
@@ -145,6 +148,8 @@ class PurchaseVoucherController extends Controller
                         'id' => $purchaseVoucher->customerOrder->id,
                         'co_number' => $purchaseVoucher->customerOrder->co_number,
                         'quotation_number' => $purchaseVoucher->customerOrder->quotation_number,
+                        'payment_terms' => $purchaseVoucher->customerOrder->payment_terms,
+                        'delivery_date' => $purchaseVoucher->customerOrder->delivery_date?->format('Y-m-d'),
                     ]
                     : null,
                 'created_at' => $purchaseVoucher->created_at,
@@ -236,6 +241,17 @@ class PurchaseVoucherController extends Controller
                 : ' Tidak ada PO yang dibuat otomatis (tidak ada part yang kurang stok, atau part yang kurang belum punya data harga/supplier).';
         }
 
+        if ($po) {
+            NotificationDispatcher::notifyModule(
+                User::PERMISSION_MODULE_PURCHASE_ORDERS,
+                'po_generated',
+                'PO Otomatis Dibuat dari Voucher',
+                "PO {$po->po_number} otomatis dibuat dari {$purchaseVoucher->pv_number} untuk part yang stoknya kurang.",
+                route('purchase.po.edit', $po),
+                $request->user()?->id,
+            );
+        }
+
         return back()->with('success', $message);
     }
 
@@ -247,7 +263,7 @@ class PurchaseVoucherController extends Controller
      */
     private function generateAutoPurchaseOrderForShortage(PurchaseVoucher $purchaseVoucher, ?User $user): ?PurchaseOrder
     {
-        $purchaseVoucher->load('items.part.supplierPrices');
+        $purchaseVoucher->load('items.part.supplierPrices', 'customerOrder');
 
         $shortageItems = $purchaseVoucher->items->filter(function (PurchaseVoucherItem $item) {
             if (! $item->part->isPurchasable()) {
@@ -288,10 +304,14 @@ class PurchaseVoucherController extends Controller
 
         $po = PurchaseOrder::create([
             'po_number' => PurchaseOrder::generateNumber(),
+            'project_code' => $purchaseVoucher->customerOrder?->project_code,
+            'quo_no' => $purchaseVoucher->customerOrder?->quotation_number,
             'supplier_id' => $supplierId,
             'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
             'order_date' => now()->toDateString(),
+            'expected_date' => $purchaseVoucher->customerOrder?->delivery_date,
             'currency_code' => AppSetting::get('default_currency_code', 'IDR'),
+            'term_payment' => $purchaseVoucher->customerOrder?->payment_terms,
             'notes' => "Auto-generated dari {$purchaseVoucher->pv_number} untuk part yang stoknya kurang.",
             'created_by' => $user?->id,
         ]);
@@ -386,8 +406,9 @@ class PurchaseVoucherController extends Controller
         }
 
         $validated = $request->validated();
+        $po = null;
 
-        DB::transaction(function () use ($validated, $purchaseVoucher, $request) {
+        DB::transaction(function () use ($validated, $purchaseVoucher, $request, &$po) {
             $supplier = Supplier::findOrFail($validated['supplier_id']);
             $orderDate = $validated['order_date'];
             $expectedDate = $validated['expected_date'] ?? null;
@@ -395,12 +416,14 @@ class PurchaseVoucherController extends Controller
 
             $po = PurchaseOrder::create([
                 'po_number' => PurchaseOrder::generateNumber(),
+                'project_code' => $purchaseVoucher->customerOrder?->project_code,
                 'quo_no' => $validated['quo_no'] ?? null,
                 'supplier_id' => $supplier->id,
                 'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
                 'order_date' => $orderDate,
                 'expected_date' => $expectedDate,
                 'currency_code' => $currencyCode,
+                'term_payment' => $validated['term_payment'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => $request->user()->id,
             ]);
@@ -452,6 +475,17 @@ class PurchaseVoucherController extends Controller
                 $purchaseVoucher->update(['status' => PurchaseVoucher::STATUS_CONVERTED]);
             }
         });
+
+        if ($po) {
+            NotificationDispatcher::notifyModule(
+                User::PERMISSION_MODULE_PURCHASE_ORDERS,
+                'po_generated',
+                'PO Baru dari Voucher',
+                "PO {$po->po_number} dibuat dari {$purchaseVoucher->pv_number}.",
+                route('purchase.po.edit', $po),
+                $request->user()?->id,
+            );
+        }
 
         return to_route('purchase.po.index')->with('success', 'PO berhasil dibuat dari Purchase Voucher.');
     }

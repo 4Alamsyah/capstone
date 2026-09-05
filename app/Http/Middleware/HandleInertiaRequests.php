@@ -52,6 +52,22 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'warning' => fn () => $request->session()->get('warning'),
             ],
+            'notifications' => [
+                'unreadCount' => fn () => $request->user() instanceof User
+                    ? $request->user()->unreadNotifications()->count()
+                    : 0,
+                'recent' => fn () => $request->user() instanceof User
+                    ? $request->user()->notifications()->latest()->limit(10)->get()->map(fn ($notification) => [
+                        'id' => $notification->id,
+                        'type' => $notification->data['type'] ?? null,
+                        'title' => $notification->data['title'] ?? '',
+                        'description' => $notification->data['description'] ?? '',
+                        'url' => $notification->data['url'] ?? null,
+                        'read_at' => $notification->read_at,
+                        'created_at' => $notification->created_at,
+                    ])
+                    : [],
+            ],
         ];
     }
 }

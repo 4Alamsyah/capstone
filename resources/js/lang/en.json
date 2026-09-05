@@ -97,6 +97,15 @@
         "id": "Indonesian",
         "en": "English"
     },
+    "notifications": {
+        "title": "Notifications",
+        "empty": "No notifications yet.",
+        "mark_all_read": "Mark all as read",
+        "just_now": "Just now",
+        "minutes_ago": "{n}m ago",
+        "hours_ago": "{n}h ago",
+        "days_ago": "{n}d ago"
+    },
     "accounting": {
         "general": {
             "heading_title": "Accounting General",

@@ -10,11 +10,13 @@ use App\Models\BomItem;
 use App\Models\Part;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLog;
 use App\Models\WorkOrderReport;
 use App\Models\WorkOrderReportProduction;
+use App\Support\NotificationDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -140,6 +142,7 @@ class WorkOrderController extends Controller
             'workOrders' => collect($workOrders->items())->map(fn (WorkOrder $wo): array => [
                 'id'             => $wo->id,
                 'wo_number'      => $wo->wo_number,
+                'project_code'   => $wo->project_code,
                 'status'         => $wo->status,
                 'quantity'       => (string) $wo->quantity,
                 'scheduled_date' => $wo->scheduled_date?->format('Y-m-d'),
@@ -469,6 +472,7 @@ class WorkOrderController extends Controller
             'workOrder' => [
                 'id'             => $workOrder->id,
                 'wo_number'      => $workOrder->wo_number,
+                'project_code'   => $workOrder->project_code,
                 'status'         => $workOrder->status,
                 'quantity'       => (string) $workOrder->quantity,
                 'scheduled_date' => $workOrder->scheduled_date?->format('Y-m-d'),
@@ -919,6 +923,15 @@ class WorkOrderController extends Controller
                 'shortfall_quantity' => $shortfallQty,
                 'quantity' => $quantity,
             ],
+            $userId,
+        );
+
+        NotificationDispatcher::notifyModule(
+            User::PERMISSION_MODULE_MANUFACTURING_WORK_ORDERS,
+            'wo_generated',
+            'Replenishment MO Otomatis Dibuat',
+            "MO {$workOrder->wo_number} otomatis dibuat karena stock {$part->part_number} tidak cukup.",
+            route('work-orders.show', $workOrder),
             $userId,
         );
 

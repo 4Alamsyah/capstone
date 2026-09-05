@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WoNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -72,11 +73,13 @@ class Payment extends Model
     {
         $prefix = AppSetting::get('payment_prefix', 'PAY');
         $yearMonth = now()->format('Ym');
+        $stem = "{$prefix}-{$yearMonth}";
 
-        $pattern = "{$prefix}-{$yearMonth}-%";
-        $count = static::where('payment_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
+        $pattern = "{$stem}-%";
+        $existing = static::where('payment_number', 'like', $pattern)->pluck('payment_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, '-', $existing);
+        $seq = str_pad((string) $sequence, 5, '0', STR_PAD_LEFT);
 
-        return "{$prefix}-{$yearMonth}-{$seq}";
+        return "{$stem}-{$seq}";
     }
 }

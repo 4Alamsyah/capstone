@@ -26,6 +26,7 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number',
+        'project_code',
         'quo_no',
         'supplier_id',
         'created_by',
@@ -112,9 +113,10 @@ class PurchaseOrder extends Model
         $separator = $format['separator'] ?? '-';
         $pattern = ($stem ? $stem.$separator : '').'%';
 
-        $count = static::where('po_number', 'like', $pattern)->count();
+        $existing = static::where('po_number', 'like', $pattern)->pluck('po_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
 
-        return WoNumberService::generate($format, $count + 1);
+        return WoNumberService::generate($format, $sequence);
     }
 
     private static function defaultFormat(): array

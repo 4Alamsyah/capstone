@@ -23,7 +23,6 @@ class UpdateCustomerOrderRequest extends FormRequest
             'delivery_date' => ['nullable', 'date', 'after_or_equal:order_date'],
             'shipping_address' => ['nullable', 'string', 'max:1000'],
             'payment_terms' => ['nullable', 'string', 'max:100'],
-            'project_code' => ['nullable', 'string', 'max:100'],
             'delivery_type' => ['nullable', 'string', 'in:equipment,material'],
             'po_number' => ['nullable', 'string', 'max:100'],
             'currency_code' => ['nullable', 'string', 'size:3', Rule::exists('currencies', 'code')],

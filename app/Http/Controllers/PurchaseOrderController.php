@@ -62,6 +62,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrders' => collect($purchaseOrders->items())->map(fn (PurchaseOrder $purchaseOrder): array => [
                 'id' => $purchaseOrder->id,
                 'po_number' => $purchaseOrder->po_number,
+                'project_code' => $purchaseOrder->project_code,
                 'status' => $purchaseOrder->status,
                 'approved_at' => $purchaseOrder->approved_at?->format('Y-m-d H:i'),
                 'rejected_at' => $purchaseOrder->rejected_at?->format('Y-m-d H:i'),
@@ -168,6 +169,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrder' => [
                 'id' => $purchaseOrder->id,
                 'po_number' => $purchaseOrder->po_number,
+                'project_code' => $purchaseOrder->project_code,
                 'supplier_id' => $purchaseOrder->supplier_id,
                 'order_date' => $purchaseOrder->order_date?->format('Y-m-d'),
                 'expected_date' => $purchaseOrder->expected_date?->format('Y-m-d'),
@@ -777,6 +779,7 @@ class PurchaseOrderController extends Controller
 
             $workOrder = WorkOrder::query()->create([
                 'wo_number' => WorkOrder::generateNumber(),
+                'project_code' => $purchaseOrder->project_code,
                 'bom_id' => $bom->id,
                 'purchase_order_id' => $purchaseOrder->id,
                 'quantity' => $quantity,

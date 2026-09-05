@@ -18,6 +18,7 @@ class AppSettingController extends Controller
         $coFormat = json_decode(AppSetting::get('co_format', json_encode($this->defaultCoFormat())), true) ?? $this->defaultCoFormat();
         $quotationFormat = json_decode(AppSetting::get('quotation_format', json_encode($this->defaultQuotationFormat())), true) ?? $this->defaultQuotationFormat();
         $pvFormat = json_decode(AppSetting::get('pv_format', json_encode($this->defaultPvFormat())), true) ?? $this->defaultPvFormat();
+        $projectFormat = json_decode(AppSetting::get('project_format', json_encode($this->defaultProjectFormat())), true) ?? $this->defaultProjectFormat();
 
         return Inertia::render('settings/AppSettings', [
             'settings' => [
@@ -26,6 +27,7 @@ class AppSettingController extends Controller
                 'co_format' => $coFormat,
                 'quotation_format' => $quotationFormat,
                 'pv_format' => $pvFormat,
+                'project_format' => $projectFormat,
             ],
             'status' => session('status'),
         ]);
@@ -68,6 +70,13 @@ class AppSettingController extends Controller
             'pv_format.components.*.type' => ['required', 'string', 'in:prefix,year,month,sequential'],
             'pv_format.components.*.format' => ['required', 'string'],
             'pv_format.separator' => ['required', 'string', 'max:5'],
+
+            'project_format' => ['required', 'array'],
+            'project_format.prefix' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9\-_]+$/i'],
+            'project_format.components' => ['required', 'array', 'min:1'],
+            'project_format.components.*.type' => ['required', 'string', 'in:prefix,year,month,sequential'],
+            'project_format.components.*.format' => ['required', 'string'],
+            'project_format.separator' => ['required', 'string', 'max:5'],
         ]);
 
         AppSetting::set('wo_format', json_encode($validated['wo_format']));
@@ -75,6 +84,7 @@ class AppSettingController extends Controller
         AppSetting::set('co_format', json_encode($validated['co_format']));
         AppSetting::set('quotation_format', json_encode($validated['quotation_format']));
         AppSetting::set('pv_format', json_encode($validated['pv_format']));
+        AppSetting::set('project_format', json_encode($validated['project_format']));
 
         return to_route('app-settings.edit')->with('status', 'settings-updated');
     }
@@ -139,6 +149,20 @@ class AppSettingController extends Controller
     {
         return [
             'prefix' => 'PV',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
+    }
+
+    private function defaultProjectFormat(): array
+    {
+        return [
+            'prefix' => 'PRJ',
             'separator' => '-',
             'components' => [
                 ['type' => 'prefix', 'format' => 'raw'],

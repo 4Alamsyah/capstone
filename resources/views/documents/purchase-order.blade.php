@@ -281,25 +281,6 @@
             font-weight: 700;
         }
 
-        .toolbar {
-            text-align: right;
-            margin: 0 0 8px;
-        }
-
-        .btn {
-            border: 1px solid #666;
-            background: #fff;
-            padding: 6px 10px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        @media print {
-            .toolbar {
-                display: none;
-            }
-        }
-
         @page {
             size: A4 portrait;
             margin: 8mm;
@@ -307,10 +288,6 @@
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button class="btn" onclick="window.print()">Print Purchase Order</button>
-    </div>
-
     <div class="page">
         <table class="top-row">
             <tr>
@@ -369,6 +346,11 @@
                             <td class="meta-label">Quo No</td>
                             <td class="meta-colon">:</td>
                             <td>{{ $purchaseOrder->quo_no ?: '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">Project Code</td>
+                            <td class="meta-colon">:</td>
+                            <td>{{ $purchaseOrder->project_code ?: '-' }}</td>
                         </tr>
                         <tr>
                             <td class="meta-label">Date</td>
@@ -482,11 +464,11 @@
             <tr>
                 <td>
                     <div class="sign-space"></div>
-                    <div class="sign-name">{{ $purchaseOrder->creator?->name ?: '-' }}</div>
+                    <div class="sign-name">Efna N</div>
                 </td>
                 <td>
                     <div class="sign-space"></div>
-                    <div class="sign-name">{{ $purchaseOrder->approver?->name ?: '-' }}</div>
+                    <div class="sign-name">Murthado</div>
                 </td>
             </tr>
         </table>

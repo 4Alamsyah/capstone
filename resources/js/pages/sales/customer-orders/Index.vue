@@ -19,6 +19,7 @@ import type { BreadcrumbItem } from '@/types';
 type OrderItem = {
     id: number;
     co_number: string;
+    quotation_number: string | null;
     status: number;
     order_date: string | null;
     delivery_date: string | null;
@@ -121,7 +122,11 @@ const editOrder = (order: OrderItem) => {
 };
 
 const deleteOrder = (order: OrderItem) => {
-    if (!window.confirm(`Hapus CO ${order.co_number}?`)) {
+    const message = order.quotation_number
+        ? `Hapus CO ${order.co_number}?\n\nCO ini berasal dari quotation ${order.quotation_number}. Menghapus CO akan menghapus permanen seluruh riwayat quotation tersebut juga.`
+        : `Hapus CO ${order.co_number}?`;
+
+    if (!window.confirm(message)) {
         return;
     }
 
@@ -165,7 +170,11 @@ const undoReport = (order: OrderItem) => {
         return;
     }
 
-    if (!window.confirm(`Undo report untuk ${order.co_number} dan kembalikan ke Registered?`)) {
+    if (
+        !window.confirm(
+            `Undo report untuk ${order.co_number} dan kembalikan ke Registered?\n\nJika manufacture order terkait sudah direport (produksi/stok sudah jalan), stok akan disesuaikan kembali otomatis.`,
+        )
+    ) {
         return;
     }
 

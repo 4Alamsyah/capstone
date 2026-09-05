@@ -47,6 +47,7 @@ type PurchaseOrderLine = {
 type PurchaseOrderPayload = {
     id: number;
     po_number: string;
+    project_code: string | null;
     supplier_id: number;
     order_date: string | null;
     expected_date: string | null;
@@ -173,9 +174,15 @@ const submit = () => {
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
-                <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">PO Number</span>
-                    <span class="font-mono text-sm font-semibold">{{ props.purchaseOrder.po_number }}</span>
+                <div class="mb-5 flex flex-wrap items-center gap-6 rounded-md bg-muted/40 px-3 py-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">PO Number</span>
+                        <span class="font-mono text-sm font-semibold">{{ props.purchaseOrder.po_number }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">Project Code</span>
+                        <span class="font-mono text-sm font-semibold">{{ props.purchaseOrder.project_code ?? '-' }}</span>
+                    </div>
                 </div>
 
                 <form class="space-y-5" @submit.prevent="submit">

@@ -25,7 +25,13 @@ type PVItem = {
     already_converted: boolean;
     supplier_prices: SupplierPrice[];
 };
-type CO = { id: number; co_number: string; quotation_number: string | null };
+type CO = {
+    id: number;
+    co_number: string;
+    quotation_number: string | null;
+    payment_terms: string | null;
+    delivery_date: string | null;
+};
 type UserRef = { id: number; name: string };
 type Supplier = { id: number; name: string };
 type Currency = { code: string; name: string; symbol: string };
@@ -34,6 +40,7 @@ type QuotationOption = { quotation_number: string; items_label: string };
 type PurchaseVoucher = {
     id: number;
     pv_number: string;
+    project_code: string | null;
     status: number;
     source: string;
     items: PVItem[];
@@ -109,11 +116,13 @@ const defaultSupplierId = ((): number | null => {
 const convertForm = useForm({
     supplier_id: defaultSupplierId ?? ('' as number | string),
     order_date: new Date().toISOString().split('T')[0],
-    expected_date: '',
+    // Pre-filled from the linked CO's delivery date, same handoff as quo_no/term_payment.
+    expected_date: props.purchaseVoucher.customer_order?.delivery_date ?? '',
     currency_code: props.defaultCurrency,
     // Pre-filled from the CO this voucher was generated for, when that CO itself
     // came from a quotation - saves re-typing it on the PV -> PO handoff.
     quo_no: props.purchaseVoucher.customer_order?.quotation_number ?? '',
+    term_payment: props.purchaseVoucher.customer_order?.payment_terms ?? '',
     notes: '',
     lines: [] as Array<{ purchase_voucher_item_id: number; unit_price: number; remarks: string }>,
 });
@@ -240,7 +249,10 @@ const convertToPo = () => {
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4">
             <!-- Header -->
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <Heading :title="purchaseVoucher.pv_number" description="Detail purchase voucher pembelian." />
+                <Heading
+                    :title="purchaseVoucher.pv_number"
+                    :description="purchaseVoucher.project_code ? `Project Code: ${purchaseVoucher.project_code}` : 'Detail purchase voucher pembelian.'"
+                />
                 <div class="flex items-center gap-2">
                     <span
                         class="inline-flex rounded-full px-3 py-1 text-xs font-medium"
@@ -460,9 +472,15 @@ const convertToPo = () => {
                         </div>
                     </div>
 
-                    <div class="grid gap-2">
-                        <Label for="quo_no">Quo No</Label>
-                        <QuotationCombobox id="quo_no" v-model="convertForm.quo_no" :quotations="quotations" />
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="grid gap-2">
+                            <Label for="quo_no">Quo No</Label>
+                            <QuotationCombobox id="quo_no" v-model="convertForm.quo_no" :quotations="quotations" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="term_payment">Term Payment</Label>
+                            <Input id="term_payment" v-model="convertForm.term_payment" maxlength="100" placeholder="cth. Net 30" />
+                        </div>
                     </div>
 
                     <div class="grid gap-2">

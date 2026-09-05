@@ -14,6 +14,7 @@ class WorkOrder extends Model
      */
     protected $fillable = [
         'wo_number',
+        'project_code',
         'bom_id',
         'purchase_order_id',
         'quantity',
@@ -62,9 +63,10 @@ class WorkOrder extends Model
         $separator = $format['separator'] ?? '-';
         $pattern = ($stem ? $stem . $separator : '') . '%';
 
-        $count = static::where('wo_number', 'like', $pattern)->count();
+        $existing = static::where('wo_number', 'like', $pattern)->pluck('wo_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
 
-        return WoNumberService::generate($format, $count + 1);
+        return WoNumberService::generate($format, $sequence);
     }
 
     private static function defaultFormat(): array

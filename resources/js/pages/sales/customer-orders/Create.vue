@@ -35,6 +35,7 @@ type Props = {
     customers: CustomerOption[];
     parts: PartOption[];
     nextCoNumber: string;
+    nextProjectCode: string;
     defaultCurrency: string;
     currencies: CurrencyOption[];
     paymentTermsOptions: string[];
@@ -187,9 +188,15 @@ const submit = () => {
             </div>
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
-                <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">CO Number (auto)</span>
-                    <span class="font-mono text-sm font-semibold">{{ nextCoNumber }}</span>
+                <div class="mb-5 flex flex-wrap items-center gap-6 rounded-md bg-muted/40 px-3 py-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">CO Number (auto)</span>
+                        <span class="font-mono text-sm font-semibold">{{ nextCoNumber }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-muted-foreground">Project Code (auto)</span>
+                        <span class="font-mono text-sm font-semibold">{{ nextProjectCode }}</span>
+                    </div>
                 </div>
 
                 <form class="space-y-5" @submit.prevent="submit">

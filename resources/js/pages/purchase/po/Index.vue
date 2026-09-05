@@ -30,6 +30,7 @@ type PurchaseOrderItem = {
 type PurchaseOrderRow = {
     id: number;
     po_number: string;
+    project_code: string | null;
     status: number;
     approved_at: string | null;
     rejected_at: string | null;
@@ -187,6 +188,7 @@ const paginationText = computed(() => {
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
                                 <th class="py-2 pr-3">PO Number</th>
+                                <th class="py-2 pr-3">Project Code</th>
                                 <th class="py-2 pr-3">Supplier</th>
                                 <th class="py-2 pr-3">Order Date</th>
                                 <th class="py-2 pr-3">Expected Date</th>
@@ -200,10 +202,11 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="props.purchaseOrders.length === 0">
-                                <td colspan="10" class="py-8 text-center text-muted-foreground">No purchase orders found.</td>
+                                <td colspan="11" class="py-8 text-center text-muted-foreground">No purchase orders found.</td>
                             </tr>
                             <tr v-for="po in props.purchaseOrders" :key="po.id" class="border-b border-sidebar-border/40 align-top last:border-0">
                                 <td class="py-2 pr-3 font-mono font-medium">{{ po.po_number }}</td>
+                                <td class="py-2 pr-3 font-mono text-xs text-muted-foreground">{{ po.project_code ?? '-' }}</td>
                                 <td class="py-2 pr-3">{{ po.supplier.name ?? '-' }}</td>
                                 <td class="py-2 pr-3">{{ po.order_date ?? '-' }}</td>
                                 <td class="py-2 pr-3">{{ po.expected_date ?? '-' }}</td>

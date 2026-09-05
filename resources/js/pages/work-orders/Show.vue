@@ -21,6 +21,7 @@ type BomLineItem = {
 type WorkOrderDetail = {
     id: number;
     wo_number: string;
+    project_code: string | null;
     status: string;
     quantity: string;
     scheduled_date: string | null;
@@ -127,6 +128,10 @@ const deleteWo = () => {
                         <div>
                             <dt class="text-xs text-muted-foreground">MO Number</dt>
                             <dd class="font-mono font-semibold">{{ workOrder.wo_number }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-muted-foreground">Project Code</dt>
+                            <dd class="font-mono font-semibold">{{ workOrder.project_code ?? '-' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-muted-foreground">Status</dt>

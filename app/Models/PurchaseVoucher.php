@@ -21,7 +21,7 @@ class PurchaseVoucher extends Model
     public const SOURCE_STOCK_RECOMMENDATION = 'stock_recommendation';
 
     protected $fillable = [
-        'pv_number', 'status', 'source',
+        'pv_number', 'project_code', 'status', 'source',
         'customer_order_id', 'created_by',
         'submitted_by', 'submitted_at',
         'approved_by', 'approved_at',
@@ -58,9 +58,10 @@ class PurchaseVoucher extends Model
         $separator = $format['separator'] ?? '-';
         $pattern = ($stem ? $stem . $separator : '') . '%';
 
-        $count = static::where('pv_number', 'like', $pattern)->count();
+        $existing = static::where('pv_number', 'like', $pattern)->pluck('pv_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
 
-        return WoNumberService::generate($format, $count + 1);
+        return WoNumberService::generate($format, $sequence);
     }
 
     private static function defaultFormat(): array

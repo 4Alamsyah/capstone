@@ -97,6 +97,15 @@
         "id": "Indonesia",
         "en": "Inggris"
     },
+    "notifications": {
+        "title": "Notifikasi",
+        "empty": "Belum ada notifikasi.",
+        "mark_all_read": "Tandai semua dibaca",
+        "just_now": "Baru saja",
+        "minutes_ago": "{n}m lalu",
+        "hours_ago": "{n}j lalu",
+        "days_ago": "{n}h lalu"
+    },
     "accounting": {
         "general": {
             "heading_title": "Accounting General",

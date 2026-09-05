@@ -17,6 +17,7 @@ type WoBom = {
 type WorkOrderItem = {
     id: number;
     wo_number: string;
+    project_code: string | null;
     status: string;
     quantity: string;
     scheduled_date: string | null;
@@ -132,6 +133,7 @@ const paginationText = computed(() => {
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
                                 <th class="py-2 pr-3">MO Number</th>
+                                <th class="py-2 pr-3">Project Code</th>
                                 <th class="py-2 pr-3">Source PO</th>
                                 <th class="py-2 pr-3">Product</th>
                                 <th class="py-2 pr-3">BOM</th>
@@ -143,7 +145,7 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="workOrders.length === 0">
-                                <td colspan="8" class="py-8 text-center text-muted-foreground">No manufacture orders found.</td>
+                                <td colspan="9" class="py-8 text-center text-muted-foreground">No manufacture orders found.</td>
                             </tr>
                             <tr
                                 v-for="wo in workOrders"
@@ -151,6 +153,7 @@ const paginationText = computed(() => {
                                 class="border-b border-sidebar-border/40 last:border-0"
                             >
                                 <td class="py-2 pr-3 font-mono font-medium">{{ wo.wo_number }}</td>
+                                <td class="py-2 pr-3 font-mono text-xs text-muted-foreground">{{ wo.project_code ?? '-' }}</td>
                                 <td class="py-2 pr-3 font-mono text-xs text-muted-foreground">
                                     {{ wo.purchase_order.po_number ?? '-' }}
                                 </td>

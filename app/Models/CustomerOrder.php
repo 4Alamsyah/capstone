@@ -69,9 +69,10 @@ class CustomerOrder extends Model
         $separator = $format['separator'] ?? '-';
         $pattern = ($stem ? $stem . $separator : '') . '%';
 
-        $count = static::where('co_number', 'like', $pattern)->count();
+        $existing = static::where('co_number', 'like', $pattern)->pluck('co_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
 
-        return WoNumberService::generate($format, $count + 1);
+        return WoNumberService::generate($format, $sequence);
     }
 
     public static function generateQuotationNumber(): string
@@ -81,9 +82,37 @@ class CustomerOrder extends Model
         $separator = $format['separator'] ?? '-';
         $pattern = ($stem ? $stem . $separator : '') . '%';
 
-        $count = static::where('co_number', 'like', $pattern)->count();
+        $existing = static::where('co_number', 'like', $pattern)->pluck('co_number');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
 
-        return WoNumberService::generate($format, $count + 1);
+        return WoNumberService::generate($format, $sequence);
+    }
+
+    public static function generateProjectCode(): string
+    {
+        $format = json_decode(AppSetting::get('project_format', ''), true) ?? self::defaultProjectFormat();
+        $stem = WoNumberService::stem($format);
+        $separator = $format['separator'] ?? '-';
+        $pattern = ($stem ? $stem . $separator : '') . '%';
+
+        $existing = static::where('project_code', 'like', $pattern)->pluck('project_code');
+        $sequence = WoNumberService::nextSequenceNumber($stem, $separator, $existing);
+
+        return WoNumberService::generate($format, $sequence);
+    }
+
+    private static function defaultProjectFormat(): array
+    {
+        return [
+            'prefix' => 'PRJ',
+            'separator' => '-',
+            'components' => [
+                ['type' => 'prefix', 'format' => 'raw'],
+                ['type' => 'year', 'format' => 'YYYY'],
+                ['type' => 'month', 'format' => 'MM'],
+                ['type' => 'sequential', 'format' => '5'],
+            ],
+        ];
     }
 
     private static function defaultCoFormat(): array

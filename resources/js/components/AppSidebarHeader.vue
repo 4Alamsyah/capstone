@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem } from '@/types';
 
@@ -25,6 +26,9 @@ withDefaults(
             </template>
         </div>
 
-        <LanguageSwitcher class="ml-auto" />
+        <div class="ml-auto flex items-center gap-2">
+            <NotificationBell />
+            <LanguageSwitcher />
+        </div>
     </header>
 </template>

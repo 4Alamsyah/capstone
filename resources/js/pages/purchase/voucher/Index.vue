@@ -10,6 +10,7 @@ import type { BreadcrumbItem } from '@/types';
 type PurchaseVoucherRow = {
     id: number;
     pv_number: string;
+    project_code: string | null;
     status: number;
     source: string;
     customer_order: { co_number: string } | null;
@@ -164,6 +165,7 @@ const paginationText = computed(() => {
                         <thead>
                             <tr class="border-b border-sidebar-border/70 text-left text-xs text-muted-foreground">
                                 <th class="py-2 pr-3">PV Number</th>
+                                <th class="py-2 pr-3">Project Code</th>
                                 <th class="py-2 pr-3">Status</th>
                                 <th class="py-2 pr-3">Source</th>
                                 <th class="py-2 pr-3">Items</th>
@@ -174,7 +176,7 @@ const paginationText = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-if="props.purchaseVouchers.length === 0">
-                                <td colspan="7" class="py-8 text-center text-muted-foreground">No purchase vouchers found.</td>
+                                <td colspan="8" class="py-8 text-center text-muted-foreground">No purchase vouchers found.</td>
                             </tr>
                             <tr
                                 v-for="pv in props.purchaseVouchers"
@@ -186,6 +188,7 @@ const paginationText = computed(() => {
                                         {{ pv.pv_number }}
                                     </Link>
                                 </td>
+                                <td class="py-2 pr-3 font-mono text-xs text-muted-foreground">{{ pv.project_code ?? '-' }}</td>
                                 <td class="py-2 pr-3">
                                     <span
                                         class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"

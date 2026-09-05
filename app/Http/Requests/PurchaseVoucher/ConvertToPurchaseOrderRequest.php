@@ -20,6 +20,7 @@ class ConvertToPurchaseOrderRequest extends FormRequest
             'expected_date' => ['nullable', 'date', 'after_or_equal:order_date'],
             'currency_code' => ['nullable', 'string', 'size:3', Rule::exists('currencies', 'code')],
             'quo_no'        => ['nullable', 'string', 'max:50'],
+            'term_payment'  => ['nullable', 'string', 'max:100'],
             'notes'         => ['nullable', 'string', 'max:5000'],
             'lines'         => ['required', 'array', 'min:1'],
             'lines.*.purchase_voucher_item_id' => ['required', 'integer', 'exists:purchase_voucher_items,id'],
