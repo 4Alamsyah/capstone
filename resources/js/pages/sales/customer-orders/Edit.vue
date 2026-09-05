@@ -21,6 +21,7 @@ type PartOption = {
     id: number;
     part_number: string;
     name: string;
+    category: string | null;
     selling_price: number;
     stock_on_hand: number;
 };
@@ -138,6 +139,12 @@ const applyCustomerDefaults = () => {
 const getPartById = (partId: number) => {
     return props.parts.find((part) => part.id === Number(partId)) ?? null;
 };
+
+const partGroups = computed(() => [
+    { label: 'Manufacture Part', parts: props.parts.filter((part) => part.category === 'manufacture') },
+    { label: 'Purchase Part', parts: props.parts.filter((part) => part.category === 'purchase') },
+    { label: 'Lainnya', parts: props.parts.filter((part) => part.category !== 'manufacture' && part.category !== 'purchase') },
+]);
 
 const preAllocatedQty = (lineIndex: number, partId: number) => {
     if (!partId) {
@@ -330,9 +337,13 @@ const submit = () => {
                                             @change="choosePart(index)"
                                         >
                                             <option value="">- pilih part -</option>
-                                            <option v-for="part in parts" :key="part.id" :value="part.id">
-                                                {{ part.part_number }} - {{ part.name }}
-                                            </option>
+                                            <template v-for="group in partGroups" :key="group.label">
+                                                <optgroup v-if="group.parts.length" :label="group.label">
+                                                    <option v-for="part in group.parts" :key="part.id" :value="part.id">
+                                                        {{ part.part_number }} - {{ part.name }}
+                                                    </option>
+                                                </optgroup>
+                                            </template>
                                         </select>
                                         <InputError :message="form.errors[`lines.${index}.part_id`]" />
                                     </div>

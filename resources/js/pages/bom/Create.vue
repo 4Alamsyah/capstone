@@ -14,6 +14,7 @@ type PartOption = {
     id: number;
     part_number: string;
     name: string;
+    category: string | null;
     has_bom: boolean;
     default_uom_id: number | null;
 };
@@ -43,6 +44,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'BOM', href: '/bom' },
     { title: 'Create', href: '/bom/create' },
 ];
+
+const partGroups = computed(() => [
+    { label: 'Manufacture Part', parts: props.parts.filter((part) => part.category === 'manufacture') },
+    { label: 'Purchase Part', parts: props.parts.filter((part) => part.category === 'purchase') },
+    { label: 'Lainnya', parts: props.parts.filter((part) => part.category !== 'manufacture' && part.category !== 'purchase') },
+]);
 
 type LineItem = {
     line_type: 'part' | 'operation';
@@ -151,9 +158,13 @@ const submit = () => {
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="">— pilih part —</option>
-                                <option v-for="p in parts" :key="p.id" :value="p.id">
-                                    {{ p.part_number }} – {{ p.name }}
-                                </option>
+                                <template v-for="group in partGroups" :key="group.label">
+                                    <optgroup v-if="group.parts.length" :label="group.label">
+                                        <option v-for="p in group.parts" :key="p.id" :value="p.id">
+                                            {{ p.part_number }} – {{ p.name }}
+                                        </option>
+                                    </optgroup>
+                                </template>
                             </select>
                             <InputError :message="form.errors.part_id" />
                         </div>
@@ -243,9 +254,13 @@ const submit = () => {
                                         @change="fetchBomTree(idx, item.component_part_id); onComponentPartSelected(item, item.component_part_id)"
                                     >
                                         <option :value="null">— pilih part —</option>
-                                        <option v-for="p in parts" :key="p.id" :value="p.id">
-                                            {{ p.part_number }} – {{ p.name }}{{ p.has_bom ? ' (sub-assembly)' : '' }}
-                                        </option>
+                                        <template v-for="group in partGroups" :key="group.label">
+                                            <optgroup v-if="group.parts.length" :label="group.label">
+                                                <option v-for="p in group.parts" :key="p.id" :value="p.id">
+                                                    {{ p.part_number }} – {{ p.name }}{{ p.has_bom ? ' (sub-assembly)' : '' }}
+                                                </option>
+                                            </optgroup>
+                                        </template>
                                     </select>
                                     <select
                                         v-else
