@@ -487,11 +487,12 @@ class ApInvoiceController extends Controller
     {
         return Part::query()
             ->orderBy('part_number')
-            ->get(['id', 'part_number', 'name'])
+            ->get(['id', 'part_number', 'name', 'category'])
             ->map(fn (Part $part): array => [
                 'id' => $part->id,
                 'part_number' => $part->part_number,
                 'name' => $part->name,
+                'category' => $part->category,
             ])
             ->values()
             ->all();

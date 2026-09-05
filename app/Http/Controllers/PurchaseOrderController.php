@@ -130,11 +130,12 @@ class PurchaseOrderController extends Controller
             'parts' => Part::query()
                 ->with('supplierPrices:id,part_id,supplier_id,purchase_price')
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name'])
+                ->get(['id', 'part_number', 'name', 'category'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'supplier_prices' => $part->supplierPrices->map(fn ($price): array => [
                         'supplier_id' => (int) $price->supplier_id,
                         'purchase_price' => (float) $price->purchase_price,
@@ -205,11 +206,12 @@ class PurchaseOrderController extends Controller
             'parts' => Part::query()
                 ->with('supplierPrices:id,part_id,supplier_id,purchase_price')
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name'])
+                ->get(['id', 'part_number', 'name', 'category'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'supplier_prices' => $part->supplierPrices->map(fn ($price): array => [
                         'supplier_id' => (int) $price->supplier_id,
                         'purchase_price' => (float) $price->purchase_price,

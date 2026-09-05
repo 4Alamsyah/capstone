@@ -340,11 +340,12 @@ class QuotationController extends Controller
             'parts' => Part::query()
                 ->withSum('stocks as total_stock', 'quantity')
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->get(['id', 'part_number', 'name', 'category', 'selling_price'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'selling_price' => (float) $part->selling_price,
                     'stock_on_hand' => (int) ($part->total_stock ?? 0),
                 ]),

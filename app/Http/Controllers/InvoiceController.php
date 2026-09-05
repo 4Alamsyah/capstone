@@ -161,11 +161,12 @@ class InvoiceController extends Controller
                 ]),
             'parts' => Part::query()
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->get(['id', 'part_number', 'name', 'category', 'selling_price'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'selling_price' => (float) $part->selling_price,
                 ]),
         ]);
@@ -236,11 +237,12 @@ class InvoiceController extends Controller
                 ]),
             'parts' => Part::query()
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->get(['id', 'part_number', 'name', 'category', 'selling_price'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'selling_price' => (float) $part->selling_price,
                 ]),
         ]);

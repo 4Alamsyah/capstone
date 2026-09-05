@@ -129,6 +129,7 @@ class PurchaseVoucherController extends Controller
         $purchaseVoucher->load([
             'items.part.supplierPrices.supplier',
             'items.part.boms' => fn ($query) => $query->where('is_active', true),
+            'items.purchaseOrderItems',
             'customerOrder',
             'creator',
         ]);
@@ -174,6 +175,7 @@ class PurchaseVoucherController extends Controller
                     'stock_on_hand' => (float) $item->stock_on_hand,
                     'remarks' => $item->remarks,
                     'is_purchasable' => $item->part->category === Part::CATEGORY_PURCHASE && $item->part->boms->isEmpty(),
+                    'already_converted' => $item->purchaseOrderItems->isNotEmpty(),
                     'supplier_prices' => $item->part->supplierPrices
                         ->map(fn (PartSupplierPrice $price): array => [
                             'supplier_id' => $price->supplier_id,
@@ -205,19 +207,130 @@ class PurchaseVoucherController extends Controller
         ]);
     }
 
-    public function submit(PurchaseVoucher $purchaseVoucher): RedirectResponse
+    public function submit(Request $request, PurchaseVoucher $purchaseVoucher): RedirectResponse
     {
         if ($purchaseVoucher->status !== PurchaseVoucher::STATUS_DRAFT) {
             return back()->withErrors(['status' => 'Hanya PV dalam status Draft yang dapat disubmit.']);
         }
 
-        $purchaseVoucher->update([
-            'status' => PurchaseVoucher::STATUS_SUBMITTED,
-            'submitted_by' => auth()->id(),
-            'submitted_at' => now(),
+        $generatePo = $request->boolean('generate_po');
+        $po = null;
+
+        DB::transaction(function () use ($request, $purchaseVoucher, $generatePo, &$po) {
+            $purchaseVoucher->update([
+                'status' => PurchaseVoucher::STATUS_SUBMITTED,
+                'submitted_by' => auth()->id(),
+                'submitted_at' => now(),
+            ]);
+
+            if ($generatePo) {
+                $po = $this->generateAutoPurchaseOrderForShortage($purchaseVoucher, $request->user());
+            }
+        });
+
+        $message = 'Purchase Voucher berhasil disubmit untuk approval.';
+
+        if ($generatePo) {
+            $message .= $po
+                ? " PO {$po->po_number} otomatis dibuat untuk part yang stoknya kurang."
+                : ' Tidak ada PO yang dibuat otomatis (tidak ada part yang kurang stok, atau part yang kurang belum punya data harga/supplier).';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Auto-generate a PO for PV items whose requested quantity exceeds current stock,
+     * using the supplier on file for the most of those items (ties by lowest total cost) -
+     * the same default-supplier heuristic used client-side on the PV detail page.
+     * Returns null if nothing is short, or if none of the short parts has a supplier price on file.
+     */
+    private function generateAutoPurchaseOrderForShortage(PurchaseVoucher $purchaseVoucher, ?User $user): ?PurchaseOrder
+    {
+        $purchaseVoucher->load('items.part.supplierPrices');
+
+        $shortageItems = $purchaseVoucher->items->filter(function (PurchaseVoucherItem $item) {
+            if (! $item->part->isPurchasable()) {
+                return false;
+            }
+
+            $currentStock = Stock::where('part_id', $item->part_id)->sum('quantity') ?? 0;
+
+            return (float) $item->quantity > (float) $currentStock;
+        });
+
+        if ($shortageItems->isEmpty()) {
+            return null;
+        }
+
+        $coverage = [];
+
+        foreach ($shortageItems as $item) {
+            foreach ($item->part->supplierPrices as $price) {
+                $coverage[$price->supplier_id]['count'] = ($coverage[$price->supplier_id]['count'] ?? 0) + 1;
+                $coverage[$price->supplier_id]['total'] = ($coverage[$price->supplier_id]['total'] ?? 0) + (float) $price->purchase_price;
+            }
+        }
+
+        $supplierId = null;
+        $best = null;
+
+        foreach ($coverage as $candidateId => $stat) {
+            if (! $best || $stat['count'] > $best['count'] || ($stat['count'] === $best['count'] && $stat['total'] < $best['total'])) {
+                $best = $stat;
+                $supplierId = $candidateId;
+            }
+        }
+
+        if (! $supplierId) {
+            return null;
+        }
+
+        $po = PurchaseOrder::create([
+            'po_number' => PurchaseOrder::generateNumber(),
+            'supplier_id' => $supplierId,
+            'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
+            'order_date' => now()->toDateString(),
+            'currency_code' => AppSetting::get('default_currency_code', 'IDR'),
+            'notes' => "Auto-generated dari {$purchaseVoucher->pv_number} untuk part yang stoknya kurang.",
+            'created_by' => $user?->id,
         ]);
 
-        return back()->with('success', 'Purchase Voucher berhasil disubmit untuk approval.');
+        foreach ($shortageItems as $item) {
+            $price = $item->part->supplierPrices->firstWhere('supplier_id', $supplierId)
+                ?? $item->part->supplierPrices->sortBy('purchase_price')->first();
+            $unitPrice = (float) ($price->purchase_price ?? 0);
+
+            PurchaseOrderItem::create([
+                'purchase_order_id' => $po->id,
+                'part_id' => $item->part_id,
+                'quantity' => $item->quantity,
+                'unit' => $item->unit,
+                'unit_price' => $unitPrice,
+                'line_total' => $unitPrice * (float) $item->quantity,
+                'purchase_voucher_item_id' => $item->id,
+            ]);
+
+            // Backfill the part's price for this supplier if it isn't on file yet -
+            // never overwrite an existing price, only fill the gap.
+            PartSupplierPrice::firstOrCreate(
+                ['part_id' => $item->part_id, 'supplier_id' => $supplierId],
+                ['purchase_price' => $unitPrice]
+            );
+        }
+
+        $po->update(['subtotal' => $po->items->sum('line_total')]);
+
+        $convertedItemIds = PurchaseOrderItem::whereIn(
+            'purchase_voucher_item_id',
+            $purchaseVoucher->items->pluck('id')
+        )->distinct('purchase_voucher_item_id')->pluck('purchase_voucher_item_id')->toArray();
+
+        if (count($convertedItemIds) === $purchaseVoucher->items->count()) {
+            $purchaseVoucher->update(['status' => PurchaseVoucher::STATUS_CONVERTED]);
+        }
+
+        return $po;
     }
 
     public function approve(Request $request, PurchaseVoucher $purchaseVoucher): RedirectResponse

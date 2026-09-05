@@ -33,6 +33,7 @@ type PartOption = {
     id: number;
     part_number: string;
     name: string;
+    category: string | null;
 };
 
 type CurrencyOption = {
@@ -82,6 +83,12 @@ const form = useForm({
 const selectedPurchaseOrder = computed(() => {
     return props.purchaseOrders.find((po) => po.id === Number(form.purchase_order_id)) ?? null;
 });
+
+const partGroups = computed(() => [
+    { label: 'Manufacture Part', parts: props.parts.filter((part) => part.category === 'manufacture') },
+    { label: 'Purchase Part', parts: props.parts.filter((part) => part.category === 'purchase') },
+    { label: 'Lainnya', parts: props.parts.filter((part) => part.category !== 'manufacture' && part.category !== 'purchase') },
+]);
 
 const addLine = () => {
     form.lines.push({
@@ -276,9 +283,13 @@ const submit = () => {
                                             @change="choosePart(index)"
                                         >
                                             <option value="">- pilih part -</option>
-                                            <option v-for="part in props.parts" :key="part.id" :value="part.id">
-                                                {{ part.part_number }} - {{ part.name }}
-                                            </option>
+                                            <template v-for="group in partGroups" :key="group.label">
+                                                <optgroup v-if="group.parts.length" :label="group.label">
+                                                    <option v-for="part in group.parts" :key="part.id" :value="part.id">
+                                                        {{ part.part_number }} - {{ part.name }}
+                                                    </option>
+                                                </optgroup>
+                                            </template>
                                         </select>
                                         <InputError :message="form.errors[`lines.${index}.part_id`]" />
                                     </div>

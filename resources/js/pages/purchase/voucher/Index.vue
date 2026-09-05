@@ -79,7 +79,11 @@ const clearFilter = () => {
 };
 
 const submitVoucher = (pv: PurchaseVoucherRow) => {
-    useForm({}).post(`/purchase/voucher/${pv.id}/submit`, { preserveScroll: true });
+    const generatePo = window.confirm(
+        `Submit Voucher ${pv.pv_number} untuk approval.\n\nGenerate PO otomatis untuk part yang stoknya kurang?`,
+    );
+
+    useForm({ generate_po: generatePo }).post(`/purchase/voucher/${pv.id}/submit`, { preserveScroll: true });
 };
 
 const approveVoucher = (pv: PurchaseVoucherRow) => {

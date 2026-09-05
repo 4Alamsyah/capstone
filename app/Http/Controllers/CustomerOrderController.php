@@ -74,23 +74,77 @@ class CustomerOrderController extends Controller
             ->get(['id', 'customer_order_id', 'invoice_number'])
             ->keyBy('customer_order_id');
 
-        $planningRows = (clone $query)
+        $planningOrders = (clone $query)
             ->whereNotNull('delivery_date')
             ->where('status', '!=', CustomerOrder::STATUS_HISTORICAL)
+            ->with('items')
             ->orderBy('delivery_date')
-            ->get(['delivery_date', 'status', 'needs_mo_suggestion'])
+            ->get(['id', 'delivery_date', 'status']);
+
+        // Stock levels move after an order is placed (other orders, purchases, etc.), so
+        // `needs_mo_suggestion` stored on the order is only a snapshot from the last save.
+        // Recompute availability live from current stock instead of trusting that snapshot.
+        $partIds = collect($orders->items())
+            ->flatMap(fn (CustomerOrder $order): Collection => $order->items->pluck('part_id'))
+            ->merge($planningOrders->flatMap(fn (CustomerOrder $order): Collection => $order->items->pluck('part_id')))
+            ->unique()
+            ->values();
+
+        $stockByPartId = Part::query()
+            ->whereIn('id', $partIds)
+            ->withSum('stocks as total_stock', 'quantity')
+            ->get(['id'])
+            ->keyBy('id')
+            ->map(fn (Part $part): int => (int) ($part->total_stock ?? 0));
+
+        $resolveAvailability = function (CustomerOrder $order) use ($stockByPartId): array {
+            $allocatedByPart = [];
+            $needsMo = false;
+            $itemAvailability = [];
+
+            foreach ($order->items->sortBy('id') as $item) {
+                $stockOnHand = (float) ($stockByPartId->get($item->part_id) ?? 0);
+                $alreadyAllocated = (float) ($allocatedByPart[$item->part_id] ?? 0.0);
+                $remainingStock = max(0.0, $stockOnHand - $alreadyAllocated);
+                $requiresMo = $remainingStock < (float) $item->quantity;
+
+                $allocatedByPart[$item->part_id] = $alreadyAllocated + (float) $item->quantity;
+                $needsMo = $needsMo || $requiresMo;
+
+                $itemAvailability[$item->id] = [
+                    'stock_on_hand' => (int) $remainingStock,
+                    'requires_mo' => $requiresMo,
+                ];
+            }
+
+            return ['needs_mo' => $needsMo, 'items' => $itemAvailability];
+        };
+
+        $orderAvailability = collect($orders->items())
+            ->keyBy('id')
+            ->map($resolveAvailability);
+
+        $planningAvailability = $planningOrders
+            ->keyBy('id')
+            ->map($resolveAvailability);
+
+        $planningRows = $planningOrders
             ->groupBy(fn (CustomerOrder $order): string => (string) $order->delivery_date?->format('Y-m-d'))
-            ->map(function ($group, $date): array {
+            ->map(function ($group, $date) use ($planningAvailability): array {
                 $delayed = $group->filter(fn (CustomerOrder $order): bool =>
                     $order->delivery_date !== null
                     && $order->delivery_date->isPast()
                     && $order->status !== CustomerOrder::STATUS_DELIVERED
                 )->count();
 
+                $needsMoCount = $group
+                    ->filter(fn (CustomerOrder $order): bool => $planningAvailability->get($order->id)['needs_mo'] ?? false)
+                    ->count();
+
                 return [
                     'delivery_date' => $date,
                     'orders_count' => $group->count(),
-                    'needs_mo_count' => $group->where('needs_mo_suggestion', true)->count(),
+                    'needs_mo_count' => $needsMoCount,
                     'delayed_count' => $delayed,
                 ];
             })
@@ -108,7 +162,7 @@ class CustomerOrderController extends Controller
                 'delivery_type' => $order->delivery_type,
                 'currency_code' => $order->currency_code,
                 'subtotal' => (string) $order->subtotal,
-                'needs_mo_suggestion' => $order->needs_mo_suggestion,
+                'needs_mo_suggestion' => $orderAvailability->get($order->id)['needs_mo'] ?? $order->needs_mo_suggestion,
                 'customer' => [
                     'id' => $order->customer?->id,
                     'name' => $order->customer?->name,
@@ -125,8 +179,8 @@ class CustomerOrderController extends Controller
                     'unit' => $item->unit,
                     'unit_price' => (string) $item->unit_price,
                     'line_total' => (string) $item->line_total,
-                    'stock_on_hand' => (int) $item->stock_on_hand,
-                    'requires_mo' => $item->requires_mo,
+                    'stock_on_hand' => $orderAvailability->get($order->id)['items'][$item->id]['stock_on_hand'] ?? (int) $item->stock_on_hand,
+                    'requires_mo' => $orderAvailability->get($order->id)['items'][$item->id]['requires_mo'] ?? $item->requires_mo,
                     'remarks' => $item->remarks,
                 ])->values(),
             ])->values(),
@@ -183,11 +237,12 @@ class CustomerOrderController extends Controller
             'parts' => Part::query()
                 ->withSum('stocks as total_stock', 'quantity')
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->get(['id', 'part_number', 'name', 'category', 'selling_price'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'selling_price' => (float) $part->selling_price,
                     'stock_on_hand' => (int) ($part->total_stock ?? 0),
                 ]),
@@ -253,11 +308,12 @@ class CustomerOrderController extends Controller
             'parts' => Part::query()
                 ->withSum('stocks as total_stock', 'quantity')
                 ->orderBy('part_number')
-                ->get(['id', 'part_number', 'name', 'selling_price'])
+                ->get(['id', 'part_number', 'name', 'category', 'selling_price'])
                 ->map(fn (Part $part): array => [
                     'id' => $part->id,
                     'part_number' => $part->part_number,
                     'name' => $part->name,
+                    'category' => $part->category,
                     'selling_price' => (float) $part->selling_price,
                     'stock_on_hand' => (int) ($part->total_stock ?? 0),
                 ]),

@@ -200,11 +200,12 @@ class BomController extends Controller
     {
         $partIdsWithBom = Bom::where('is_active', true)->pluck('part_id')->unique();
 
-        return Part::orderBy('name')->get(['id', 'part_number', 'name', 'default_uom_id'])
+        return Part::orderBy('name')->get(['id', 'part_number', 'name', 'category', 'default_uom_id'])
             ->map(fn (Part $part): array => [
                 'id'              => $part->id,
                 'part_number'     => $part->part_number,
                 'name'            => $part->name,
+                'category'        => $part->category,
                 'has_bom'         => $partIdsWithBom->contains($part->id),
                 'default_uom_id'  => $part->default_uom_id,
             ]);

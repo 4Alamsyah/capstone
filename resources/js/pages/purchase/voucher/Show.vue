@@ -22,6 +22,7 @@ type PVItem = {
     stock_on_hand: number;
     remarks?: string;
     is_purchasable: boolean;
+    already_converted: boolean;
     supplier_prices: SupplierPrice[];
 };
 type CO = { id: number; co_number: string; quotation_number: string | null };
@@ -175,7 +176,15 @@ const sourceLabels: Record<string, string> = {
 };
 
 const submitForApproval = () => {
-    router.post(`/purchase/voucher/${props.purchaseVoucher.id}/submit`, {}, { preserveScroll: true });
+    const generatePo = window.confirm(
+        'Voucher akan disubmit untuk approval.\n\nGenerate PO otomatis untuk part yang stoknya kurang?',
+    );
+
+    router.post(
+        `/purchase/voucher/${props.purchaseVoucher.id}/submit`,
+        { generate_po: generatePo },
+        { preserveScroll: true },
+    );
 };
 
 const approve = () => {
@@ -306,6 +315,9 @@ const convertToPo = () => {
                                         <span v-if="!item.is_purchasable" class="ml-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-700">
                                             Manufacture — tidak bisa di-PO
                                         </span>
+                                        <span v-else-if="item.already_converted" class="ml-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                            Sudah ada PO
+                                        </span>
                                     </PartContextTrigger>
                                 </td>
                                 <td class="py-2 pr-3 text-right font-mono">{{ formatQty(item.quantity) }}</td>
@@ -365,13 +377,13 @@ const convertToPo = () => {
                                 v-for="item in purchaseVoucher.items"
                                 :key="item.id"
                                 class="flex flex-wrap items-center gap-3 rounded-md border border-sidebar-border/40 p-3"
-                                :class="{ 'opacity-50': !item.is_purchasable }"
+                                :class="{ 'opacity-50': !item.is_purchasable || item.already_converted }"
                             >
                                 <input
                                     v-model="selectedItemsForConvert[item.id]"
                                     type="checkbox"
                                     class="rounded border-input"
-                                    :disabled="!item.is_purchasable"
+                                    :disabled="!item.is_purchasable || item.already_converted"
                                 />
                                 <div class="min-w-0 flex-1">
                                     <div class="font-mono text-sm font-medium">
@@ -380,10 +392,13 @@ const convertToPo = () => {
                                             <span v-if="!item.is_purchasable" class="ml-1 text-xs font-sans font-normal text-rose-600">
                                                 (manufacture — tidak bisa di-PO)
                                             </span>
+                                            <span v-else-if="item.already_converted" class="ml-1 text-xs font-sans font-normal text-emerald-600">
+                                                (sudah ada PO)
+                                            </span>
                                         </PartContextTrigger>
                                     </div>
                                     <div class="text-xs text-muted-foreground">Qty: {{ formatQty(item.quantity) }} {{ item.unit }}</div>
-                                    <div v-if="item.is_purchasable" class="text-xs">
+                                    <div v-if="item.is_purchasable && !item.already_converted" class="text-xs">
                                         <template v-if="convertForm.supplier_id">
                                             <span v-if="findSupplierPrice(item, convertForm.supplier_id)" class="text-muted-foreground">
                                                 Harga tercatat: {{ formatCurrency(findSupplierPrice(item, convertForm.supplier_id)!.purchase_price) }}
