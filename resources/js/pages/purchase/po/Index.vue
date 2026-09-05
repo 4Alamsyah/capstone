@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { MoreHorizontal } from 'lucide-vue-next';
 import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatQty } from '@/lib/utils';
@@ -224,35 +232,44 @@ const paginationText = computed(() => {
                                     </div>
                                 </td>
                                 <td class="py-2 pr-3 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <Button v-if="po.status === 2 || po.status === 3" size="sm" variant="outline" as-child>
-                                            <Link :href="`/purchase/po/${po.id}/arrivals/report`">Report Arrival</Link>
-                                        </Button>
-                                        <Button
-                                            v-if="props.canManageApprovals && po.status === 1"
-                                            size="sm"
-                                            variant="outline"
-                                            @click="approvePo(po)"
-                                        >
-                                            Approve
-                                        </Button>
-                                        <Button
-                                            v-if="props.canManageApprovals && po.status === 1"
-                                            size="sm"
-                                            variant="destructive"
-                                            @click="rejectPo(po)"
-                                        >
-                                            Reject
-                                        </Button>
-                                        <Button
-                                            v-if="po.status === 1 || po.status === 8 || po.status === 9"
-                                            size="sm"
-                                            variant="destructive"
-                                            @click="deletePo(po)"
-                                        >
-                                            Hapus
-                                        </Button>
-                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger :as-child="true">
+                                            <Button size="icon" variant="ghost" class="h-8 w-8">
+                                                <MoreHorizontal class="size-4" />
+                                                <span class="sr-only">Open actions menu</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" class="w-48">
+                                            <DropdownMenuItem as-child>
+                                                <a :href="`/purchase/po/${po.id}/print`" target="_blank" rel="noopener">Print</a>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem v-if="po.status === 2 || po.status === 3" as-child>
+                                                <Link :href="`/purchase/po/${po.id}/arrivals/report`">Report Arrival</Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem v-if="po.status === 1" as-child>
+                                                <Link :href="`/purchase/po/${po.id}/edit`">Edit</Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator v-if="props.canManageApprovals && po.status === 1" />
+                                            <DropdownMenuItem v-if="props.canManageApprovals && po.status === 1" @select.prevent="approvePo(po)">
+                                                Approve
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                v-if="props.canManageApprovals && po.status === 1"
+                                                class="text-destructive focus:text-destructive"
+                                                @select.prevent="rejectPo(po)"
+                                            >
+                                                Reject
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator v-if="po.status === 1 || po.status === 8 || po.status === 9" />
+                                            <DropdownMenuItem
+                                                v-if="po.status === 1 || po.status === 8 || po.status === 9"
+                                                class="text-destructive focus:text-destructive"
+                                                @select.prevent="deletePo(po)"
+                                            >
+                                                Hapus
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </td>
                             </tr>
                         </tbody>

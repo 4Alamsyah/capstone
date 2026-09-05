@@ -100,7 +100,7 @@ class Invoice extends Model
 
         $pattern = "{$prefix}-{$yearMonth}-%";
         $count = static::where('invoice_number', 'like', $pattern)->count();
-        $seq = str_pad((string) ($count + 1), 5, '0', STR_PAD_LEFT);
+        $seq = str_pad((string) ($count + 1), 2, '0', STR_PAD_LEFT);
 
         return "{$prefix}-{$yearMonth}-{$seq}";
     }

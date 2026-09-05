@@ -35,8 +35,31 @@ type QuotationOption = {
     items_label: string;
 };
 
+type PurchaseOrderLine = {
+    part_id: number;
+    quantity: string;
+    unit: string;
+    unit_price: string;
+    remarks: string | null;
+};
+
+type PurchaseOrderPayload = {
+    id: number;
+    po_number: string;
+    supplier_id: number;
+    order_date: string | null;
+    expected_date: string | null;
+    currency_code: string;
+    quo_no: string | null;
+    term_payment: string | null;
+    department: string | null;
+    discount: string;
+    notes: string | null;
+    lines: PurchaseOrderLine[];
+};
+
 type Props = {
-    nextPoNumber: string;
+    purchaseOrder: PurchaseOrderPayload;
     suppliers: SupplierOption[];
     parts: PartOption[];
     defaultCurrency: string;
@@ -50,30 +73,26 @@ const props = defineProps<Props>();
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Purchase', href: '/purchase/po' },
     { title: 'List PO', href: '/purchase/po' },
-    { title: 'Register PO', href: '/purchase/po/create' },
+    { title: 'Edit PO', href: `/purchase/po/${props.purchaseOrder.id}/edit` },
 ];
 
-const today = new Date().toISOString().slice(0, 10);
-
 const form = useForm({
-    supplier_id: '' as unknown as number,
-    order_date: today,
-    expected_date: '',
-    currency_code: '',
-    quo_no: '',
-    term_payment: '',
-    department: '',
-    discount: '0',
-    notes: '',
-    lines: [
-        {
-            part_id: '' as unknown as number,
-            quantity: '1',
-            unit: 'PCS',
-            unit_price: '0',
-            remarks: '',
-        },
-    ],
+    supplier_id: props.purchaseOrder.supplier_id as unknown as number,
+    order_date: props.purchaseOrder.order_date ?? '',
+    expected_date: props.purchaseOrder.expected_date ?? '',
+    currency_code: props.purchaseOrder.currency_code ?? '',
+    quo_no: props.purchaseOrder.quo_no ?? '',
+    term_payment: props.purchaseOrder.term_payment ?? '',
+    department: props.purchaseOrder.department ?? '',
+    discount: props.purchaseOrder.discount ?? '0',
+    notes: props.purchaseOrder.notes ?? '',
+    lines: props.purchaseOrder.lines.map((line) => ({
+        part_id: line.part_id as unknown as number,
+        quantity: line.quantity,
+        unit: line.unit,
+        unit_price: line.unit_price,
+        remarks: line.remarks ?? '',
+    })),
 });
 
 const selectedSupplierId = computed(() => Number(form.supplier_id || 0));
@@ -130,17 +149,17 @@ const taxAmount = computed(() => Math.round((totalAfterDiscount.value * props.ta
 const grandTotal = computed(() => totalAfterDiscount.value + taxAmount.value);
 
 const submit = () => {
-    form.post('/purchase/po');
+    form.put(`/purchase/po/${props.purchaseOrder.id}`);
 };
 </script>
 
 <template>
-    <Head title="Register PO" />
+    <Head title="Edit PO" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <Heading title="Register PO" description="Buat purchase order baru ke supplier." />
+                <Heading title="Edit PO" description="Ubah purchase order yang belum di-approve." />
                 <Button variant="outline" as-child>
                     <Link href="/purchase/po">Back to List</Link>
                 </Button>
@@ -148,8 +167,8 @@ const submit = () => {
 
             <div class="rounded-lg border border-sidebar-border/70 p-4">
                 <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md bg-muted/40 px-3 py-2">
-                    <span class="text-xs text-muted-foreground">PO Number (auto)</span>
-                    <span class="font-mono text-sm font-semibold">{{ props.nextPoNumber }}</span>
+                    <span class="text-xs text-muted-foreground">PO Number</span>
+                    <span class="font-mono text-sm font-semibold">{{ props.purchaseOrder.po_number }}</span>
                 </div>
 
                 <form class="space-y-5" @submit.prevent="submit">
@@ -317,7 +336,7 @@ const submit = () => {
                         <Button type="button" variant="outline" as-child>
                             <Link href="/purchase/po">Cancel</Link>
                         </Button>
-                        <Button type="submit" :disabled="form.processing">Save PO</Button>
+                        <Button type="submit" :disabled="form.processing">Update PO</Button>
                     </div>
                 </form>
             </div>

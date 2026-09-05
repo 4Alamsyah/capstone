@@ -57,6 +57,7 @@ type PartItem = {
     inventory_type: 'material' | 'tool';
     default_uom_id: number | null;
     default_uom_code: string | null;
+    default_warehouse_id: number | null;
     description: string | null;
     selling_price: number;
     safety_stock: number;
@@ -81,6 +82,13 @@ type DefaultCurrency = {
     symbol: string;
 };
 
+type ImportResult = {
+    created: number;
+    updated: number;
+    errors: string[];
+    errorCount: number;
+};
+
 type Props = {
     parts: PartItem[];
     warehouses: WarehouseOption[];
@@ -91,6 +99,7 @@ type Props = {
         search: string;
     };
     pagination: PaginationMeta;
+    importResult?: ImportResult | null;
 };
 
 const props = defineProps<Props>();
@@ -98,9 +107,14 @@ const editDialogOpen = ref(false);
 const editingPartId = ref<number | null>(null);
 const supplierToAdd = ref<string>('');
 const supplierToAddPrice = ref<number>(0);
+const importFileInput = ref<HTMLInputElement | null>(null);
 
 const searchForm = useForm({
     search: props.filters.search ?? '',
+});
+
+const importForm = useForm<{ file: File | null }>({
+    file: null,
 });
 
 const editForm = useForm({
@@ -109,6 +123,7 @@ const editForm = useForm({
     category: 'purchase' as 'purchase' | 'manufacture',
     inventory_type: 'material' as 'material' | 'tool',
     default_uom_id: null as number | null,
+    default_warehouse_id: null as number | null,
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -170,6 +185,35 @@ const clearSearch = () => {
     submitSearch();
 };
 
+const exportUrl = computed(() => {
+    const search = searchForm.search.trim();
+
+    return search ? `/parts/export?search=${encodeURIComponent(search)}` : '/parts/export';
+});
+
+const onImportFileChange = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    importForm.file = target.files?.[0] ?? null;
+};
+
+const submitImport = () => {
+    if (!importForm.file) {
+        return;
+    }
+
+    importForm.post('/parts/import', {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => {
+            importForm.reset();
+
+            if (importFileInput.value) {
+                importFileInput.value.value = '';
+            }
+        },
+    });
+};
+
 const openEditDialog = (part: PartItem) => {
     const stockByWarehouseId = new Map(part.stocks.map((stock) => [stock.warehouse_id, stock.quantity]));
 
@@ -179,6 +223,7 @@ const openEditDialog = (part: PartItem) => {
     editForm.category = part.category;
     editForm.inventory_type = part.inventory_type;
     editForm.default_uom_id = part.default_uom_id;
+    editForm.default_warehouse_id = part.default_warehouse_id;
     editForm.description = part.description ?? '';
     editForm.selling_price = part.selling_price;
     editForm.safety_stock = part.safety_stock;
@@ -305,6 +350,56 @@ const deletePart = (part: PartItem) => {
                     <Button as-child>
                         <Link href="/parts/register">Register New Part</Link>
                     </Button>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-sidebar-border/70 bg-card p-5">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-medium">Import / Export Excel</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Download template untuk menambahkan part secara massal, atau export data part yang ada.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Button as="a" href="/parts/import-template" variant="outline" size="sm">
+                            Download Template
+                        </Button>
+                        <Button as="a" :href="exportUrl" variant="outline" size="sm">Export Excel</Button>
+
+                        <input
+                            ref="importFileInput"
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            class="hidden"
+                            @change="onImportFileChange"
+                        />
+                        <Button type="button" variant="outline" size="sm" @click="importFileInput?.click()">
+                            {{ importForm.file ? importForm.file.name : 'Choose File' }}
+                        </Button>
+                        <Button type="button" size="sm" :disabled="!importForm.file || importForm.processing" @click="submitImport">
+                            {{ importForm.processing ? 'Importing...' : 'Import' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <InputError :message="importForm.errors.file" />
+
+                <div v-if="importResult" class="mt-4 rounded-md border border-sidebar-border/60 bg-muted/30 p-3 text-sm">
+                    <p>{{ importResult.created }} part baru dibuat, {{ importResult.updated }} part diperbarui.</p>
+                    <div v-if="importResult.errors.length" class="mt-2">
+                        <p class="font-medium text-destructive">
+                            {{ importResult.errorCount }} baris gagal diimport{{
+                                importResult.errorCount > importResult.errors.length
+                                    ? ` (menampilkan ${importResult.errors.length} pertama)`
+                                    : ''
+                            }}:
+                        </p>
+                        <ul class="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                            <li v-for="(message, index) in importResult.errors" :key="index">{{ message }}</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -443,6 +538,24 @@ const deletePart = (part: PartItem) => {
                                     </option>
                                 </select>
                                 <InputError :message="editForm.errors.default_uom_id" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="edit-default-warehouse">Default Warehouse</Label>
+                                <select
+                                    id="edit-default-warehouse"
+                                    v-model="editForm.default_warehouse_id"
+                                    class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option :value="null">- tidak ada -</option>
+                                    <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+                                        {{ warehouse.code }} - {{ warehouse.name }}
+                                    </option>
+                                </select>
+                                <p class="text-xs text-muted-foreground">
+                                    Dipakai sebagai default warehouse saat report produksi MO untuk part ini.
+                                </p>
+                                <InputError :message="editForm.errors.default_warehouse_id" />
                             </div>
 
                             <div class="grid gap-2 md:col-span-2">

@@ -6,6 +6,7 @@
         "part_list": "Daftar Part",
         "register_part": "Daftarkan Part",
         "bom": "BOM",
+        "stock_opname": "Stock Opname",
         "inventory": "Inventory",
         "warehouse": "Gudang",
         "stock": "Stok",

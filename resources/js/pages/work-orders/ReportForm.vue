@@ -39,6 +39,7 @@ type Props = {
             part: {
                 part_number: string;
                 name: string;
+                default_warehouse_id: number | null;
             };
         };
     };
@@ -60,13 +61,16 @@ const seedComponents = (nodes: ComponentRequirement[], acc: Record<number, Compo
     nodes.forEach((node) => {
         acc[node.bom_item_id] = node.is_sub_assembly
             ? {
-                  warehouse_id: null,
+                  warehouse_id: node.default_warehouse_id ?? null,
                   quantity: '0',
                   good_quantity: node.recommended_quantity > 0 ? String(node.recommended_quantity) : '0',
                   reject_quantity: '0',
               }
             : {
-                  warehouse_id: node.stocks[0]?.warehouse_id ?? null,
+                  warehouse_id:
+                      node.stocks.find((stock) => stock.warehouse_id === node.default_warehouse_id)?.warehouse_id ??
+                      node.stocks[0]?.warehouse_id ??
+                      null,
                   quantity: node.recommended_quantity > 0 ? String(node.recommended_quantity) : '0',
                   good_quantity: '0',
                   reject_quantity: '0',
@@ -81,7 +85,7 @@ seedComponents(props.components, initialComponents);
 const form = useForm({
     good_quantity: formatQty(props.workOrder.quantity) || '0',
     reject_quantity: '0',
-    warehouse_id: null as number | null,
+    warehouse_id: props.workOrder.bom.part.default_warehouse_id ?? (null as number | null),
     notes: '',
     components: initialComponents,
 });

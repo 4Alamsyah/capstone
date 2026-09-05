@@ -6,6 +6,8 @@ use App\Http\Requests\PurchaseOrder\StorePurchaseArrivalRequest;
 use App\Http\Requests\PurchaseOrder\StorePurchaseOrderRequest;
 use App\Models\AppSetting;
 use App\Models\Bom;
+use App\Models\CustomerOrder;
+use App\Models\CustomerOrderItem;
 use App\Models\Currency;
 use App\Models\Part;
 use App\Models\PurchaseArrival;
@@ -19,6 +21,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderLog;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,6 +110,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('purchase/po/Create', [
             'nextPoNumber' => PurchaseOrder::generateNumber(),
             'defaultCurrency' => (string) AppSetting::get('default_currency_code', 'IDR'),
+            'taxRate' => $this->taxRate(),
             'currencies' => Currency::query()
                 ->where('is_active', true)
                 ->orderBy('code')
@@ -136,22 +140,170 @@ class PurchaseOrderController extends Controller
                         'purchase_price' => (float) $price->purchase_price,
                     ])->values(),
                 ]),
+            'quotations' => CustomerOrder::query()
+                ->where('status', CustomerOrder::STATUS_QUOTATION)
+                ->with('items.part:id,name')
+                ->orderByDesc('order_date')
+                ->get(['id', 'co_number'])
+                ->map(fn (CustomerOrder $quotation): array => [
+                    'quotation_number' => $quotation->co_number,
+                    'items_label' => $quotation->items
+                        ->map(fn (CustomerOrderItem $item): ?string => $item->part?->name)
+                        ->filter()
+                        ->unique()
+                        ->implode(', '),
+                ])
+                ->values(),
         ]);
+    }
+
+    public function edit(PurchaseOrder $purchaseOrder): Response
+    {
+        $this->ensurePurchaseOrderEditable($purchaseOrder);
+
+        $purchaseOrder->loadMissing('items');
+
+        return Inertia::render('purchase/po/Edit', [
+            'purchaseOrder' => [
+                'id' => $purchaseOrder->id,
+                'po_number' => $purchaseOrder->po_number,
+                'supplier_id' => $purchaseOrder->supplier_id,
+                'order_date' => $purchaseOrder->order_date?->format('Y-m-d'),
+                'expected_date' => $purchaseOrder->expected_date?->format('Y-m-d'),
+                'currency_code' => $purchaseOrder->currency_code,
+                'quo_no' => $purchaseOrder->quo_no,
+                'term_payment' => $purchaseOrder->term_payment,
+                'department' => $purchaseOrder->department,
+                'discount' => (string) $purchaseOrder->discount,
+                'notes' => $purchaseOrder->notes,
+                'lines' => $purchaseOrder->items->map(fn (PurchaseOrderItem $item): array => [
+                    'part_id' => $item->part_id,
+                    'quantity' => (string) $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => (string) $item->unit_price,
+                    'remarks' => $item->remarks,
+                ])->values(),
+            ],
+            'defaultCurrency' => (string) AppSetting::get('default_currency_code', 'IDR'),
+            'taxRate' => $this->taxRate(),
+            'currencies' => Currency::query()
+                ->where('is_active', true)
+                ->orderBy('code')
+                ->get(['code', 'name'])
+                ->map(fn (Currency $currency): array => [
+                    'code' => $currency->code,
+                    'name' => $currency->name,
+                ])
+                ->values(),
+            'suppliers' => Supplier::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Supplier $supplier): array => [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                ]),
+            'parts' => Part::query()
+                ->with('supplierPrices:id,part_id,supplier_id,purchase_price')
+                ->orderBy('part_number')
+                ->get(['id', 'part_number', 'name'])
+                ->map(fn (Part $part): array => [
+                    'id' => $part->id,
+                    'part_number' => $part->part_number,
+                    'name' => $part->name,
+                    'supplier_prices' => $part->supplierPrices->map(fn ($price): array => [
+                        'supplier_id' => (int) $price->supplier_id,
+                        'purchase_price' => (float) $price->purchase_price,
+                    ])->values(),
+                ]),
+            'quotations' => CustomerOrder::query()
+                ->where('status', CustomerOrder::STATUS_QUOTATION)
+                ->with('items.part:id,name')
+                ->orderByDesc('order_date')
+                ->get(['id', 'co_number'])
+                ->map(fn (CustomerOrder $quotation): array => [
+                    'quotation_number' => $quotation->co_number,
+                    'items_label' => $quotation->items
+                        ->map(fn (CustomerOrderItem $item): ?string => $item->part?->name)
+                        ->filter()
+                        ->unique()
+                        ->implode(', '),
+                ])
+                ->values(),
+        ]);
+    }
+
+    public function update(StorePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $this->ensurePurchaseOrderEditable($purchaseOrder);
+
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($validated, $purchaseOrder): void {
+            $purchaseOrder->update([
+                'quo_no' => $validated['quo_no'] ?? null,
+                'supplier_id' => $validated['supplier_id'],
+                'order_date' => $validated['order_date'],
+                'expected_date' => $validated['expected_date'] ?? null,
+                'currency_code' => strtoupper((string) ($validated['currency_code'] ?? AppSetting::get('default_currency_code', 'IDR'))),
+                'term_payment' => $validated['term_payment'] ?? null,
+                'department' => $validated['department'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            $purchaseOrder->items()->delete();
+
+            $subtotal = 0.0;
+
+            foreach ($validated['lines'] as $line) {
+                $quantity = (float) $line['quantity'];
+                $unitPrice = (float) $line['unit_price'];
+                $lineTotal = $quantity * $unitPrice;
+                $subtotal += $lineTotal;
+
+                PurchaseOrderItem::query()->create([
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'part_id' => $line['part_id'],
+                    'quantity' => $quantity,
+                    'unit' => strtoupper((string) ($line['unit'] ?? 'PCS')),
+                    'unit_price' => $unitPrice,
+                    'line_total' => $lineTotal,
+                    'received_quantity' => 0,
+                    'remarks' => $line['remarks'] ?? null,
+                ]);
+            }
+
+            $discount = min((float) ($validated['discount'] ?? 0), $subtotal);
+            $taxAmount = round(max(0, $subtotal - $discount) * $this->taxRate() / 100, 2);
+
+            $purchaseOrder->update([
+                'subtotal' => $subtotal,
+                'discount' => $discount,
+                'tax_amount' => $taxAmount,
+            ]);
+        });
+
+        return to_route('purchase.po.index')->with('success', 'PO berhasil diperbarui.');
     }
 
     public function store(StorePurchaseOrderRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        DB::transaction(function () use ($validated): void {
+        DB::transaction(function () use ($validated, $request): void {
             $purchaseOrder = PurchaseOrder::query()->create([
                 'po_number' => PurchaseOrder::generateNumber(),
+                'quo_no' => $validated['quo_no'] ?? null,
                 'supplier_id' => $validated['supplier_id'],
+                'created_by' => $request->user()?->id,
                 'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
                 'order_date' => $validated['order_date'],
                 'expected_date' => $validated['expected_date'] ?? null,
                 'currency_code' => strtoupper((string) ($validated['currency_code'] ?? AppSetting::get('default_currency_code', 'IDR'))),
+                'term_payment' => $validated['term_payment'] ?? null,
+                'department' => $validated['department'] ?? null,
                 'subtotal' => 0,
+                'discount' => 0,
+                'tax_amount' => 0,
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -175,12 +327,55 @@ class PurchaseOrderController extends Controller
                 ]);
             }
 
+            $discount = min((float) ($validated['discount'] ?? 0), $subtotal);
+            $taxAmount = round(max(0, $subtotal - $discount) * $this->taxRate() / 100, 2);
+
             $purchaseOrder->update([
                 'subtotal' => $subtotal,
+                'discount' => $discount,
+                'tax_amount' => $taxAmount,
             ]);
         });
 
         return to_route('purchase.po.index');
+    }
+
+    /**
+     * Stream a printable PDF of the purchase order, matching the company's PO document template.
+     */
+    public function document(PurchaseOrder $purchaseOrder): \Symfony\Component\HttpFoundation\Response
+    {
+        $purchaseOrder->loadMissing(['supplier', 'items.part', 'creator', 'approver']);
+
+        $pdf = Pdf::loadView('documents.purchase-order', [
+            'purchaseOrder' => $purchaseOrder,
+            'logoDataUri' => $this->companyLogoDataUri(),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('PO-'.$purchaseOrder->po_number.'.pdf');
+    }
+
+    /**
+     * Inline the company logo as a base64 data URI so dompdf can render it
+     * without needing remote/local file access enabled.
+     */
+    private function companyLogoDataUri(): ?string
+    {
+        $path = public_path('denki.png');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
+    }
+
+    /**
+     * Tax rate (%) configured in Accounting > Tax Setting, applied to PO subtotal after discount.
+     */
+    private function taxRate(): float
+    {
+        return (float) AppSetting::get('tax_rate', 0);
     }
 
     public function approve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
@@ -512,6 +707,15 @@ class PurchaseOrderController extends Controller
 
         if (! $user instanceof User || ! $user->canApprovePurchaseOrder()) {
             throw new AuthorizationException('Hanya GM/Director yang dapat melakukan approval.');
+        }
+    }
+
+    private function ensurePurchaseOrderEditable(PurchaseOrder $purchaseOrder): void
+    {
+        if ($purchaseOrder->status !== PurchaseOrder::STATUS_PENDING_APPROVAL) {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'PO hanya bisa diedit saat masih pending approval.',
+            ]);
         }
     }
 

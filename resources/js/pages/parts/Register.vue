@@ -70,6 +70,7 @@ const form = useForm({
     category: 'purchase',
     inventory_type: 'material' as 'material' | 'tool',
     default_uom_id: null as number | null,
+    default_warehouse_id: null as number | null,
     description: '',
     selling_price: 0,
     safety_stock: 0,
@@ -307,6 +308,24 @@ const submitQuickWarehouse = async () => {
                             </option>
                         </select>
                         <InputError :message="form.errors.default_uom_id" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="default_warehouse_id">Default Warehouse</Label>
+                        <select
+                            id="default_warehouse_id"
+                            v-model="form.default_warehouse_id"
+                            class="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option :value="null">- tidak ada -</option>
+                            <option v-for="warehouse in warehouseOptions" :key="warehouse.id" :value="warehouse.id">
+                                {{ warehouse.code }} - {{ warehouse.name }}
+                            </option>
+                        </select>
+                        <p class="text-xs text-muted-foreground">
+                            Dipakai sebagai default warehouse saat report produksi MO untuk part ini.
+                        </p>
+                        <InputError :message="form.errors.default_warehouse_id" />
                     </div>
 
                     <div class="grid gap-2 md:col-span-2">

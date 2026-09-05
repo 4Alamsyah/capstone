@@ -26,7 +26,9 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number',
+        'quo_no',
         'supplier_id',
+        'created_by',
         'status',
         'approved_by',
         'approved_at',
@@ -35,7 +37,11 @@ class PurchaseOrder extends Model
         'order_date',
         'expected_date',
         'currency_code',
+        'term_payment',
+        'department',
         'subtotal',
+        'discount',
+        'tax_amount',
         'notes',
         'approval_notes',
     ];
@@ -44,6 +50,8 @@ class PurchaseOrder extends Model
         'order_date' => 'date',
         'expected_date' => 'date',
         'subtotal' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];
@@ -51,6 +59,30 @@ class PurchaseOrder extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * User who created (prepared) this purchase order.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Management user who approved this purchase order.
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Grand total = subtotal - discount + tax.
+     */
+    public function getGrandTotalAttribute(): float
+    {
+        return round((float) $this->subtotal - (float) $this->discount + (float) $this->tax_amount, 2);
     }
 
     public function items(): HasMany
@@ -78,7 +110,7 @@ class PurchaseOrder extends Model
         $format = json_decode(AppSetting::get('po_format', ''), true) ?? self::defaultFormat();
         $stem = WoNumberService::stem($format);
         $separator = $format['separator'] ?? '-';
-        $pattern = ($stem ? $stem . $separator : '') . '%';
+        $pattern = ($stem ? $stem.$separator : '').'%';
 
         $count = static::where('po_number', 'like', $pattern)->count();
 

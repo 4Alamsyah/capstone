@@ -26,6 +26,7 @@ class CustomerOrder extends Model
      */
     protected $fillable = [
         'co_number',
+        'quotation_number',
         'customer_id',
         'status',
         'order_date',

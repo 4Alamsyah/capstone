@@ -44,10 +44,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('parts')->group(function () {
         Route::get('/', [PartController::class, 'index'])->middleware('permission:module.parts.master')->name('parts.index');
+        Route::get('/export', [PartController::class, 'export'])->middleware('permission:module.parts.master')->name('parts.export');
+        Route::get('/import-template', [PartController::class, 'importTemplate'])->middleware('permission:module.parts.master')->name('parts.import-template');
+        Route::post('/import', [PartController::class, 'import'])->middleware('permission:module.parts.master,full')->name('parts.import');
         Route::get('/register', [PartController::class, 'create'])->middleware('permission:module.parts.master')->name('parts.create');
         Route::post('/', [PartController::class, 'store'])->middleware('permission:module.parts.master,full')->name('parts.store');
         Route::put('/{part}', [PartController::class, 'update'])->middleware('permission:module.parts.master,edit')->name('parts.update');
         Route::delete('/{part}', [PartController::class, 'destroy'])->middleware('permission:module.parts.master,full')->name('parts.destroy');
+
+        Route::get('/stock-opname', [PartController::class, 'stockOpname'])->middleware('permission:module.parts.master')->name('parts.stock-opname');
+        Route::post('/stock-opname', [PartController::class, 'updateStockOpname'])->middleware('permission:module.parts.master,edit')->name('parts.stock-opname.update');
+        Route::post('/stock-opname/zero', [PartController::class, 'zeroStockOpname'])->middleware('permission:module.parts.master,full')->name('parts.stock-opname.zero');
 
         Route::get('/stock', [PartController::class, 'stock'])->middleware('permission:module.parts.stock')->name('parts.stock');
         Route::post('/stock/tool-loans', [ToolLoanController::class, 'store'])->middleware('permission:module.parts.stock,full')->name('parts.stock.tool-loans.store');
@@ -148,6 +155,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/po', [PurchaseOrderController::class, 'index'])->middleware('permission:module.purchase.orders')->name('purchase.po.index');
         Route::get('/po/create', [PurchaseOrderController::class, 'create'])->middleware('permission:module.purchase.orders')->name('purchase.po.create');
         Route::post('/po', [PurchaseOrderController::class, 'store'])->middleware('permission:module.purchase.orders,full')->name('purchase.po.store');
+        Route::get('/po/{purchaseOrder}/edit', [PurchaseOrderController::class, 'edit'])->middleware('permission:module.purchase.orders,edit')->name('purchase.po.edit');
+        Route::put('/po/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->middleware('permission:module.purchase.orders,edit')->name('purchase.po.update');
+        Route::get('/po/{purchaseOrder}/print', [PurchaseOrderController::class, 'document'])->middleware('permission:module.purchase.orders')->name('purchase.po.print');
         Route::delete('/po/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:module.purchase.orders,full')->name('purchase.po.destroy');
         Route::post('/po/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])
             ->middleware('permission:approve.purchase_order')

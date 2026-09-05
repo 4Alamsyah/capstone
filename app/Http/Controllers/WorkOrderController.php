@@ -313,6 +313,7 @@ class WorkOrderController extends Controller
                     'part' => [
                         'part_number' => $workOrder->bom->part->part_number,
                         'name' => $workOrder->bom->part->name,
+                        'default_warehouse_id' => $workOrder->bom->part->default_warehouse_id,
                     ],
                 ],
             ],
@@ -961,6 +962,7 @@ class WorkOrderController extends Controller
                     'bom_id' => $subBom?->id,
                     'bom_name' => $subBom?->name,
                     'planning_strategy' => $subBom?->planning_strategy,
+                    'default_warehouse_id' => $part->default_warehouse_id,
                     'stocks' => $part->stocks
                         ->map(fn (Stock $stock): array => [
                             'warehouse_id' => $stock->warehouse_id,

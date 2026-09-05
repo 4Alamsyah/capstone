@@ -3,6 +3,7 @@ import { Head, router, useForm, Link } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import PartContextTrigger from '@/components/PartContextTrigger.vue';
+import QuotationCombobox from '@/components/QuotationCombobox.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,10 +24,11 @@ type PVItem = {
     is_purchasable: boolean;
     supplier_prices: SupplierPrice[];
 };
-type CO = { id: number; co_number: string };
+type CO = { id: number; co_number: string; quotation_number: string | null };
 type UserRef = { id: number; name: string };
 type Supplier = { id: number; name: string };
 type Currency = { code: string; name: string; symbol: string };
+type QuotationOption = { quotation_number: string; items_label: string };
 
 type PurchaseVoucher = {
     id: number;
@@ -54,6 +56,7 @@ type Props = {
     defaultCurrency: string;
     canManageApprovals: boolean;
     statusLabels: Record<string, string>;
+    quotations: QuotationOption[];
 };
 
 const props = defineProps<Props>();
@@ -107,6 +110,9 @@ const convertForm = useForm({
     order_date: new Date().toISOString().split('T')[0],
     expected_date: '',
     currency_code: props.defaultCurrency,
+    // Pre-filled from the CO this voucher was generated for, when that CO itself
+    // came from a quotation - saves re-typing it on the PV -> PO handoff.
+    quo_no: props.purchaseVoucher.customer_order?.quotation_number ?? '',
     notes: '',
     lines: [] as Array<{ purchase_voucher_item_id: number; unit_price: number; remarks: string }>,
 });
@@ -437,6 +443,11 @@ const convertToPo = () => {
                             <Label for="expected_date">Expected Date</Label>
                             <Input id="expected_date" v-model="convertForm.expected_date" type="date" />
                         </div>
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="quo_no">Quo No</Label>
+                        <QuotationCombobox id="quo_no" v-model="convertForm.quo_no" :quotations="quotations" />
                     </div>
 
                     <div class="grid gap-2">

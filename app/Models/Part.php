@@ -32,6 +32,7 @@ class Part extends Model
         'category',
         'inventory_type',
         'default_uom_id',
+        'default_warehouse_id',
         'description',
         'selling_price',
         'safety_stock',
@@ -43,6 +44,14 @@ class Part extends Model
     public function defaultUom(): BelongsTo
     {
         return $this->belongsTo(Uom::class, 'default_uom_id');
+    }
+
+    /**
+     * The warehouse where this part's production/report output should default to.
+     */
+    public function defaultWarehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'default_warehouse_id');
     }
 
     /**

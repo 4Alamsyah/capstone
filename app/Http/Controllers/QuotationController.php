@@ -293,6 +293,7 @@ class QuotationController extends Controller
 
             $quotation->update([
                 'co_number' => $newCustomerOrderNumber,
+                'quotation_number' => $quotationNumber,
                 'status' => CustomerOrder::STATUS_REGISTERED,
                 'notes' => $notes === '' ? $generatedNote : $notes.PHP_EOL.$generatedNote,
             ]);

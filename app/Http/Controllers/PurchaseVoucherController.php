@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PurchaseVoucher\ConvertToPurchaseOrderRequest;
 use App\Http\Requests\PurchaseVoucher\StorePurchaseVoucherRequest;
 use App\Models\AppSetting;
+use App\Models\CustomerOrder;
+use App\Models\CustomerOrderItem;
 use App\Models\Currency;
 use App\Models\Part;
 use App\Models\PartSupplierPrice;
@@ -138,7 +140,11 @@ class PurchaseVoucherController extends Controller
                 'status' => $purchaseVoucher->status,
                 'source' => $purchaseVoucher->source,
                 'customer_order' => $purchaseVoucher->customerOrder
-                    ? ['id' => $purchaseVoucher->customerOrder->id, 'co_number' => $purchaseVoucher->customerOrder->co_number]
+                    ? [
+                        'id' => $purchaseVoucher->customerOrder->id,
+                        'co_number' => $purchaseVoucher->customerOrder->co_number,
+                        'quotation_number' => $purchaseVoucher->customerOrder->quotation_number,
+                    ]
                     : null,
                 'created_at' => $purchaseVoucher->created_at,
                 'creator' => $purchaseVoucher->creator
@@ -182,6 +188,20 @@ class PurchaseVoucherController extends Controller
             'defaultCurrency' => AppSetting::get('default_currency_code', 'IDR'),
             'canManageApprovals' => auth()->user()->canApprovePurchaseVoucher(),
             'statusLabels' => PurchaseVoucher::statusLabels(),
+            'quotations' => CustomerOrder::query()
+                ->where('status', CustomerOrder::STATUS_QUOTATION)
+                ->with('items.part:id,name')
+                ->orderByDesc('order_date')
+                ->get(['id', 'co_number'])
+                ->map(fn (CustomerOrder $quotation): array => [
+                    'quotation_number' => $quotation->co_number,
+                    'items_label' => $quotation->items
+                        ->map(fn (CustomerOrderItem $item): ?string => $item->part?->name)
+                        ->filter()
+                        ->unique()
+                        ->implode(', '),
+                ])
+                ->values(),
         ]);
     }
 
@@ -262,6 +282,7 @@ class PurchaseVoucherController extends Controller
 
             $po = PurchaseOrder::create([
                 'po_number' => PurchaseOrder::generateNumber(),
+                'quo_no' => $validated['quo_no'] ?? null,
                 'supplier_id' => $supplier->id,
                 'status' => PurchaseOrder::STATUS_PENDING_APPROVAL,
                 'order_date' => $orderDate,

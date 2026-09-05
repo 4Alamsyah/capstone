@@ -6,6 +6,7 @@
         "part_list": "Part List",
         "register_part": "Register Part",
         "bom": "BOM",
+        "stock_opname": "Stock Opname",
         "inventory": "Inventory",
         "warehouse": "Warehouse",
         "stock": "Stock",

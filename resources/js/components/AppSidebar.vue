@@ -66,6 +66,7 @@ const HREF_PERMISSION_KEYS: Record<string, string> = {
 
     '/parts': 'module.parts.master',
     '/parts/register': 'module.parts.master',
+    '/parts/stock-opname': 'module.parts.master',
     '/bom': 'module.parts.master',
     '/parts/warehouses': 'module.parts.warehouse',
     '/parts/stock': 'module.parts.stock',
@@ -190,6 +191,10 @@ const mainNavItems = computed<NavItem[]>(() => {
                         {
                             title: t('nav.bom'),
                             href: '/bom',
+                        },
+                        {
+                            title: t('nav.stock_opname'),
+                            href: '/parts/stock-opname',
                         },
                     ],
                 },

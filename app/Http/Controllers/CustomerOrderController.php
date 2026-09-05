@@ -337,13 +337,13 @@ class CustomerOrderController extends Controller
             ]);
         });
 
-        return to_route('sales.customer-orders.index');
+        return redirect('/sales/customer-orders');
     }
 
     public function update(UpdateCustomerOrderRequest $request, CustomerOrder $customerOrder): RedirectResponse
     {
         if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
-            return to_route('sales.customer-orders.index')
+            return redirect('/sales/customer-orders')
                 ->with('error', 'Order hanya bisa diedit selama status masih Registered.');
         }
 
@@ -416,20 +416,20 @@ class CustomerOrderController extends Controller
             ]);
         });
 
-        return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil diperbarui.');
+        return redirect('/sales/customer-orders')->with('success', 'Customer order berhasil diperbarui.');
     }
 
     public function destroy(CustomerOrder $customerOrder): RedirectResponse
     {
         if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
-            return to_route('sales.customer-orders.index')
+            return redirect('/sales/customer-orders')
                 ->with('error', 'Order hanya bisa dihapus selama status masih Registered.');
         }
 
         $blockedReason = $this->blockedByLinkedPurchaseVoucher($customerOrder);
 
         if ($blockedReason !== null) {
-            return to_route('sales.customer-orders.index')->with('error', $blockedReason);
+            return redirect('/sales/customer-orders')->with('error', $blockedReason);
         }
 
         DB::transaction(function () use ($customerOrder): void {
@@ -441,7 +441,7 @@ class CustomerOrderController extends Controller
             $customerOrder->delete();
         });
 
-        return to_route('sales.customer-orders.index')->with('success', 'Customer order berhasil dihapus beserta Purchase Voucher terkait.');
+        return redirect('/sales/customer-orders')->with('success', 'Customer order berhasil dihapus beserta Purchase Voucher terkait.');
     }
 
     /**
@@ -482,7 +482,7 @@ class CustomerOrderController extends Controller
     public function confirm(CustomerOrder $customerOrder): RedirectResponse
     {
         if ($customerOrder->status !== CustomerOrder::STATUS_REGISTERED) {
-            return to_route('sales.customer-orders.index')->with('error', 'Order hanya bisa dikonfirmasi dari status Registered.');
+            return redirect('/sales/customer-orders')->with('error', 'Order hanya bisa dikonfirmasi dari status Registered.');
         }
 
         $customerOrder->loadMissing('items.part');
@@ -663,7 +663,7 @@ class CustomerOrderController extends Controller
             $message .= ' Purchase Voucher otomatis dibuat untuk material yang kurang untuk produksi.';
         }
 
-        return to_route('sales.customer-orders.index')->with('success', $message);
+        return redirect('/sales/customer-orders')->with('success', $message);
     }
 
     /**
@@ -728,11 +728,11 @@ class CustomerOrderController extends Controller
         $newStatus = (int) $request->validated()['status'];
 
         if ($customerOrder->status < CustomerOrder::STATUS_CONFIRMED && $newStatus >= CustomerOrder::STATUS_DELIVERED) {
-            return to_route('sales.customer-orders.index')->with('error', 'Order harus dikonfirmasi dulu sebelum masuk Delivered.');
+            return redirect('/sales/customer-orders')->with('error', 'Order harus dikonfirmasi dulu sebelum masuk Delivered.');
         }
 
         if ($newStatus <= $customerOrder->status) {
-            return to_route('sales.customer-orders.index')->with('error', 'Perubahan status harus lebih maju dari status saat ini.');
+            return redirect('/sales/customer-orders')->with('error', 'Perubahan status harus lebih maju dari status saat ini.');
         }
 
         $generatedInvoiceNumber = null;
@@ -804,23 +804,23 @@ class CustomerOrderController extends Controller
         });
 
         if ($generatedInvoiceNumber !== null) {
-            return to_route('sales.customer-orders.index')
+            return redirect('/sales/customer-orders')
                 ->with('success', 'Status order berhasil diubah dan invoice otomatis dibuat: ' . $generatedInvoiceNumber . '.');
         }
 
-        return to_route('sales.customer-orders.index');
+        return redirect('/sales/customer-orders');
     }
 
     public function undoReport(CustomerOrder $customerOrder): RedirectResponse
     {
         if ($customerOrder->status === CustomerOrder::STATUS_REGISTERED) {
-            return to_route('sales.customer-orders.index')->with('error', 'Order masih di status Registered, tidak perlu undo.');
+            return redirect('/sales/customer-orders')->with('error', 'Order masih di status Registered, tidak perlu undo.');
         }
 
         $blockedReason = $this->blockedByLinkedPurchaseVoucher($customerOrder);
 
         if ($blockedReason !== null) {
-            return to_route('sales.customer-orders.index')->with('error', $blockedReason);
+            return redirect('/sales/customer-orders')->with('error', $blockedReason);
         }
 
         DB::transaction(function () use ($customerOrder): void {
@@ -848,13 +848,13 @@ class CustomerOrderController extends Controller
             ]);
         });
 
-        return to_route('sales.customer-orders.index')->with('success', 'Status order berhasil di-undo ke Registered. Invoice dan Purchase Voucher terkait juga berhasil dihapus.');
+        return redirect('/sales/customer-orders')->with('success', 'Status order berhasil di-undo ke Registered. Invoice dan Purchase Voucher terkait juga berhasil dihapus.');
     }
 
     public function deliveryOrder(CustomerOrder $customerOrder): \Symfony\Component\HttpFoundation\Response|RedirectResponse
     {
         if ($customerOrder->status < CustomerOrder::STATUS_DELIVERED) {
-            return to_route('sales.customer-orders.index')
+            return redirect('/sales/customer-orders')
                 ->with('error', 'Delivery Order hanya tersedia jika status order sudah Delivered.');
         }
 

@@ -28,6 +28,7 @@ export type ComponentRequirement = {
     bom_id: number | null;
     bom_name: string | null;
     planning_strategy: 'order_oriented' | 'stock_driven' | null;
+    default_warehouse_id: number | null;
     safety_stock?: number;
     total_stock?: number;
     stocks: StockOption[];
